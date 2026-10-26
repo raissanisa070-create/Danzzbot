@@ -13,4 +13,3 @@ commands:
     description: Pengaturan nametag bot dengan warna/gradient
     permission: danzzbot.admin
     usage: /nametag bot <nama_bot> <nametag_text>
-    
