@@ -9,8 +9,8 @@ commands:
     description: Perintah utama DanzzBot
     permission: danzzbot.admin
     usage: /bot [create|gui|kill|chat|autochat|control|possess|unpossess|skin]
+    aliases: [danzzbot, dbot]
   nametag:
     description: Pengaturan nametag bot dengan warna/gradient
     permission: danzzbot.admin
     usage: /nametag bot <nama_bot> <nametag_text>
-    
