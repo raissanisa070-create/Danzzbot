@@ -1,0 +1,34 @@
+name: DanzzBot
+version: 1.3.0
+main: com.danzzreal.danzzbot.DanzzBot
+api-version: '1.21'
+author: DanzzReal
+description: Plugin DanzzBot dengan Perintah Terpisah dan AI Otonom.
+commands:
+  botgui:
+    description: Buka menu GUI DanzzBot
+    permission: danzzbot.admin
+  botcreate:
+    description: Buat bot baru
+    permission: danzzbot.admin
+    usage: /botcreate <nama_bot>
+  botchat:
+    description: Buat bot mengirim pesan chat
+    permission: danzzbot.admin
+    usage: /botchat <nama_bot> <pesan>
+  botpossess:
+    description: Rasuki/kontrol bot
+    permission: danzzbot.admin
+    usage: /botpossess <nama_bot>
+  botunpossess:
+    description: Keluar dari mode rasuk bot
+    permission: danzzbot.admin
+  botkill:
+    description: Hapus bot
+    permission: danzzbot.admin
+    usage: /botkill <nama_bot>
+  nametag:
+    description: Ubah warna dan teks nametag bot
+    permission: danzzbot.admin
+    usage: /nametag <nama_bot> <teks_nametag>
+    
