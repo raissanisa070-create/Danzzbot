@@ -19,217 +19,271 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.server.ServerListPingEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public final class DanzzBot extends JavaPlugin implements CommandExecutor, Listener {
 
     public enum BotActivity {
-        IDLE("Wandering / Idle"),
-        PVP_TARGET("Targeting Player (Aggressive)"),
-        MINING("Mining Ores"),
-        WOODCUTTING("Chop Trees"),
-        FARMING("Farming Crops"),
-        FISHING("Fishing");
-
-        private final String displayName;
-        BotActivity(String displayName) { this.displayName = displayName; }
-        public String getDisplayName() { return displayName; }
+        IDLE, PVP_TARGET, MINING, WOODCUTTING, FARMING, FISHING
     }
 
     public static class BotSession {
         private String name;
         private String nametag;
         private Location location;
-        private UUID uuid;
         private ArmorStand entity;
-        private String skinUrl;
-        private String modelType;
         private boolean possessed = false;
-        private UUID possessedBy = null;
         private boolean autoChat = true;
         private BotActivity activity = BotActivity.IDLE;
         private Player targetPlayer = null;
-        private int activityTimer = 0;
 
         public BotSession(String name, Location location) {
             this.name = name;
             this.nametag = ChatColor.GOLD + name;
             this.location = location;
-            this.uuid = UUID.randomUUID();
-            this.skinUrl = "";
-            this.modelType = "wide";
         }
 
         public String getName() { return name; }
         public String getNametag() { return nametag; }
         public void setNametag(String nametag) { this.nametag = nametag; }
         public Location getLocation() { return location; }
-        public void setLocation(Location location) { this.location = location; }
         public ArmorStand getEntity() { return entity; }
         public void setEntity(ArmorStand entity) { this.entity = entity; }
         public boolean isPossessed() { return possessed; }
         public void setPossessed(boolean possessed) { this.possessed = possessed; }
-        public UUID getPossessedBy() { return possessedBy; }
-        public void setPossessedBy(UUID possessedBy) { this.possessedBy = possessedBy; }
         public boolean isAutoChat() { return autoChat; }
-        public void setAutoChat(boolean autoChat) { this.autoChat = autoChat; }
-        public String getSkinUrl() { return skinUrl; }
-        public void setSkinUrl(String skinUrl) { this.skinUrl = skinUrl; }
-        public String getModelType() { return modelType; }
-        public void setModelType(String modelType) { this.modelType = modelType; }
         public BotActivity getActivity() { return activity; }
         public void setActivity(BotActivity activity) { this.activity = activity; }
         public Player getTargetPlayer() { return targetPlayer; }
         public void setTargetPlayer(Player targetPlayer) { this.targetPlayer = targetPlayer; }
-        public int getActivityTimer() { return activityTimer; }
-        public void setActivityTimer(int activityTimer) { this.activityTimer = activityTimer; }
     }
 
     private final Map<String, BotSession> activeBots = new HashMap<>();
     private final Map<UUID, String> playerPossessions = new HashMap<>();
-    private final String GUI_TITLE = ChatColor.DARK_PURPLE + "✦ DanzzBot | Control Panel ✦";
+    private final String GUI_TITLE = ChatColor.DARK_PURPLE + "✦ DanzzBot | Panel Control ✦";
 
     @Override
     public void onEnable() {
-        getCommand("bot").setExecutor(this);
-        getCommand("nametag").setExecutor(this);
+        // Pendaftaran perintah terpisah
+        String[] cmds = {"botgui", "botcreate", "botchat", "botpossess", "botunpossess", "botkill", "nametag"};
+        for (String cmd : cmds) {
+            if (getCommand(cmd) != null) {
+                getCommand(cmd).setExecutor(this);
+            }
+        }
         getServer().getPluginManager().registerEvents(this, this);
-
-        startBotFullyAutonomousAITask();
-
-        getLogger().info("=======================================");
-        getLogger().info(" DanzzBot v1.3.0 - Created by DanzzReal");
-        getLogger().info(" Full Autonomous AI & Aggressive PVP Ready!");
-        getLogger().info("=======================================");
+        startBotAITask();
+        getLogger().info("DanzzBot v1.3.0 dengan Perintah Terpisah Siap Digunakan!");
     }
 
     @Override
     public void onDisable() {
         for (BotSession bot : activeBots.values()) {
-            if (bot.getEntity() != null) {
-                bot.getEntity().remove();
-            }
+            if (bot.getEntity() != null) bot.getEntity().remove();
         }
         activeBots.clear();
         playerPossessions.clear();
-        getLogger().info("DanzzBot dimatikan.");
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Perintah ini hanya dapat dijalankan oleh player.");
+            sender.sendMessage(ChatColor.RED + "Perintah hanya untuk player!");
             return true;
         }
 
         Player player = (Player) sender;
+        String cmd = command.getName().toLowerCase();
 
-        if (command.getName().equalsIgnoreCase("nametag")) {
-            if (args.length >= 3 && args[0].equalsIgnoreCase("bot")) {
-                String botName = args[1];
-                if (!activeBots.containsKey(botName)) {
-                    player.sendMessage(ChatColor.RED + "Bot tidak ditemukan!");
-                    return true;
-                }
-                StringBuilder tagBuilder = new StringBuilder();
-                for (int i = 2; i < args.length; i++) {
-                    tagBuilder.append(args[i]).append(" ");
-                }
-                String formattedTag = applyGradientAndColors(tagBuilder.toString().trim());
-                BotSession bot = activeBots.get(botName);
-                bot.setNametag(formattedTag);
-                if (bot.getEntity() != null) {
-                    bot.getEntity().setCustomName(formattedTag);
-                }
-                player.sendMessage(ChatColor.GREEN + "[DanzzBot] Nametag berhasil diubah!");
-                return true;
-            }
-            player.sendMessage(ChatColor.YELLOW + "Penggunaan: /nametag bot <nama_bot> <teks>");
+        // 1. Perintah /botgui
+        if (cmd.equals("botgui")) {
+            openBotGui(player);
             return true;
         }
 
-        if (command.getName().equalsIgnoreCase("bot")) {
-            if (args.length == 0 || args[0].equalsIgnoreCase("gui")) {
-                openModernGui(player);
+        // 2. Perintah /botcreate <nama>
+        if (cmd.equals("botcreate")) {
+            if (args.length < 1) {
+                player.sendMessage(ChatColor.YELLOW + "Penggunaan: /botcreate <nama_bot>");
                 return true;
             }
-
-            String sub = args[0].toLowerCase();
-
-            if (sub.equals("create")) {
-                if (args.length < 2) {
-                    player.sendMessage(ChatColor.RED + "Penggunaan: /bot create <nama_bot>");
-                    return true;
-                }
-                String botName = args[1];
-                if (activeBots.containsKey(botName)) {
-                    player.sendMessage(ChatColor.RED + "Bot sudah ada!");
-                    return true;
-                }
-                spawnBotEntity(botName, player.getLocation());
-                player.sendMessage(ChatColor.GREEN + "✦ [DanzzBot] Bot '" + botName + "' berhasil dibuat!");
-                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+            String botName = args[0];
+            if (activeBots.containsKey(botName)) {
+                player.sendMessage(ChatColor.RED + "Bot dengan nama ini sudah ada!");
                 return true;
             }
+            spawnBot(botName, player.getLocation());
+            player.sendMessage(ChatColor.GREEN + "✔ Bot '" + botName + "' berhasil dibuat!");
+            return true;
+        }
 
-            if (sub.equals("chat") || sub.equals("say")) {
-                if (args.length < 3) {
-                    player.sendMessage(ChatColor.YELLOW + "Penggunaan: /bot chat <nama_bot> <pesan>");
-                    return true;
-                }
-                String botName = args[1];
-                if (!activeBots.containsKey(botName)) return true;
-                StringBuilder chatMsg = new StringBuilder();
-                for (int i = 2; i < args.length; i++) {
-                    chatMsg.append(args[i]).append(" ");
-                }
-                BotSession bot = activeBots.get(botName);
-                Bukkit.broadcastMessage(bot.getNametag() + ChatColor.WHITE + ": " + applyGradientAndColors(chatMsg.toString().trim()));
+        // 3. Perintah /botchat <nama> <pesan>
+        if (cmd.equals("botchat")) {
+            if (args.length < 2) {
+                player.sendMessage(ChatColor.YELLOW + "Penggunaan: /botchat <nama_bot> <pesan>");
                 return true;
             }
-
-            if (sub.equals("autochat") || sub.equals("ac")) {
-                if (args.length < 3) return true;
-                BotSession bot = activeBots.get(args[1]);
-                if (bot != null) {
-                    bot.setAutoChat(args[2].equalsIgnoreCase("on") || args[2].equalsIgnoreCase("true"));
-                    player.sendMessage(ChatColor.GREEN + "[DanzzBot] Auto-Chat diubah.");
-                }
+            String botName = args[0];
+            if (!activeBots.containsKey(botName)) {
+                player.sendMessage(ChatColor.RED + "Bot tidak ditemukan!");
                 return true;
             }
+            StringBuilder msg = new StringBuilder();
+            for (int i = 1; i < args.length; i++) msg.append(args[i]).append(" ");
+            BotSession bot = activeBots.get(botName);
+            Bukkit.broadcastMessage(bot.getNametag() + ChatColor.WHITE + ": " + ChatColor.translateAlternateColorCodes('&', msg.toString().trim()));
+            return true;
+        }
 
-            if (sub.equals("kill") || sub.equals("attack")) {
-                if (args.length < 3) return true;
-                BotSession bot = activeBots.get(args[1]);
-                Player target = Bukkit.getPlayer(args[2]);
-                if (bot != null && target != null) {
-                    bot.setTargetPlayer(target);
-                    bot.setActivity(BotActivity.PVP_TARGET);
-                    player.sendMessage(ChatColor.RED + "⚔️ Bot menyerang " + target.getName());
-                }
+        // 4. Perintah /botpossess <nama>
+        if (cmd.equals("botpossess")) {
+            if (args.length < 1) {
+                player.sendMessage(ChatColor.YELLOW + "Penggunaan: /botpossess <nama_bot>");
                 return true;
             }
+            BotSession bot = activeBots.get(args[0]);
+            if (bot != null) {
+                bot.setPossessed(true);
+                playerPossessions.put(player.getUniqueId(), args[0]);
+                player.teleport(bot.getLocation());
+                player.sendMessage(ChatColor.LIGHT_PURPLE + "🔮 Kamu sekarang merasuki bot " + bot.getName());
+            } else {
+                player.sendMessage(ChatColor.RED + "Bot tidak ditemukan!");
+            }
+            return true;
+        }
 
-            if (sub.equals("control") || sub.equals("possess")) {
-                if (args.length < 2) return true;
-                BotSession bot = activeBots.get(args[1]);
-                if (bot != null) {
-                    bot.setPossessed(true);
-                    bot.setPossessedBy(player.getUniqueId());
-                    playerPossessions.put(player.getUniqueId(), args[1]);
-                    player.teleport(bot.getLocation());
-                    player.sendMessage(ChatColor.LIGHT_PURPLE + "🔮 Merasuki bot!");
+        // 5. Perintah /botunpossess
+        if (cmd.equals("botunpossess")) {
+            String botName = playerPossessions.remove(player.getUniqueId());
+            if (botName != null && activeBots.containsKey(botName)) {
+                activeBots.get(botName).setPossessed(false);
+            }
+            player.sendMessage(ChatColor.GREEN + "🔮 Berhasil keluar dari mode rasuk.");
+            return true;
+        }
+
+        // 6. Perintah /botkill <nama>
+        if (cmd.equals("botkill")) {
+            if (args.length < 1) {
+                player.sendMessage(ChatColor.YELLOW + "Penggunaan: /botkill <nama_bot>");
+                return true;
+            }
+            BotSession bot = activeBots.remove(args[0]);
+            if (bot != null && bot.getEntity() != null) {
+                bot.getEntity().remove();
+                player.sendMessage(ChatColor.RED + " Bot '" + args[0] + "' berhasil dihapus.");
+            } else {
+                player.sendMessage(ChatColor.RED + "Bot tidak ditemukan!");
+            }
+            return true;
+        }
+
+        // 7. Perintah /nametag <nama> <teks>
+        if (cmd.equals("nametag")) {
+            if (args.length < 2) {
+                player.sendMessage(ChatColor.YELLOW + "Penggunaan: /nametag <nama_bot> <teks_baru>");
+                return true;
+            }
+            BotSession bot = activeBots.get(args[0]);
+            if (bot != null) {
+                StringBuilder newTag = new StringBuilder();
+                for (int i = 1; i < args.length; i++) newTag.append(args[i]).append(" ");
+                String formatted = ChatColor.translateAlternateColorCodes('&', newTag.toString().trim());
+                bot.setNametag(formatted);
+                if (bot.getEntity() != null) bot.getEntity().setCustomName(formatted);
+                player.sendMessage(ChatColor.GREEN + " Nametag bot berhasil diperbarui!");
+            } else {
+                player.sendMessage(ChatColor.RED + "Bot tidak ditemukan!");
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    private void spawnBot(String name, Location loc) {
+        BotSession session = new BotSession(name, loc);
+        ArmorStand stand = (ArmorStand) loc.getWorld().spawnEntity(loc, EntityType.ARMOR_STAND);
+        stand.setCustomName(session.getNametag());
+        stand.setCustomNameVisible(true);
+        stand.setArms(true);
+        stand.setBasePlate(true);
+        stand.getEquipment().setItemInMainHand(new ItemStack(Material.NETHERITE_SWORD));
+        stand.getEquipment().setHelmet(new ItemStack(Material.NETHERITE_HELMET));
+        session.setEntity(stand);
+        activeBots.put(name, session);
+    }
+
+    private void openBotGui(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 27, GUI_TITLE);
+        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta meta = (SkullMeta) head.getItemMeta();
+        meta.setOwningPlayer(player);
+        meta.setDisplayName(ChatColor.GREEN + "DanzzBot Controller");
+        head.setItemMeta(meta);
+        gui.setItem(13, head);
+        player.openInventory(gui);
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (event.getView().getTitle().equals(GUI_TITLE)) event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        if (playerPossessions.containsKey(player.getUniqueId())) {
+            BotSession bot = activeBots.get(playerPossessions.get(player.getUniqueId()));
+            if (bot != null && bot.getEntity() != null) {
+                bot.getEntity().teleport(player.getLocation());
+            }
+        }
+    }
+
+    private void startBotAITask() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for (BotSession bot : activeBots.values()) {
+                    if (bot.isPossessed() || bot.getEntity() == null) continue;
+                    ArmorStand entity = bot.getEntity();
+                    Location loc = entity.getLocation();
+
+                    // Cari player terdekat untuk PVP otomatis
+                    Player target = null;
+                    double minDist = 8.0;
+                    for (Entity nearby : loc.getWorld().getNearbyEntities(loc, 8, 8, 8)) {
+                        if (nearby instanceof Player && !playerPossessions.containsKey(nearby.getUniqueId())) {
+                            double d = loc.distance(nearby.getLocation());
+                            if (d < minDist) { minDist = d; target = (Player) nearby; }
+                        }
+                    }
+
+                    if (target != null) {
+                        Vector dir = target.getLocation().toVector().subtract(loc.toVector()).normalize();
+                        loc.setDirection(dir);
+                        if (minDist > 1.8) {
+                            loc.add(dir.multiply(0.35));
+                            entity.teleport(loc);
+                        } else {
+                            target.damage(4.0, entity);
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(this, 10L, 10L);
+    }
+}
+         player.sendMessage(ChatColor.LIGHT_PURPLE + "🔮 Merasuki bot!");
                 }
                 return true;
             }
