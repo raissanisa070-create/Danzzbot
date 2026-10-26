@@ -1,0 +1,16 @@
+name: DanzzBot
+version: 1.3.0
+main: com.danzzreal.danzzbot.DanzzBot
+api-version: '1.21'
+author: DanzzReal
+description: Plugin Advanced Fake Player / Autonomous Bot dengan AI Full Otomatis dan Auto-Aggressive PVP.
+commands:
+  bot:
+    description: Perintah utama DanzzBot
+    permission: danzzbot.admin
+    usage: /bot [create|gui|kill|chat|autochat|control|possess|unpossess|skin]
+  nametag:
+    description: Pengaturan nametag bot dengan warna/gradient
+    permission: danzzbot.admin
+    usage: /nametag bot <nama_bot> <nametag_text>
+    
