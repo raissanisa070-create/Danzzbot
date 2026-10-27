@@ -1,5 +1,5 @@
 # ==========================================
-# DanzzBot v1.3.0 - Ultimate Master Config File
+# DanzzBot v1.3.0 - Ultimate Master Config
 # ==========================================
 
 settings:
@@ -7,7 +7,12 @@ settings:
   pvp-damage: 9.0
   detection-range: 16.0
 
-# Pengaturan On/Off Seluruh Fitur Modern Secara Real-time
+# Pengaturan Skin Default Bot & GUI Heads (Menggunakan URL MineSkin)
+default-skin:
+  url: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  model: "wide"
+
+# Status On/Off Fitur (Bisa di-klik langsung melalui /botgui Page 2)
 features:
   health-indicator:
     enabled: true
@@ -25,24 +30,22 @@ features:
     enable-totem-pop: true
     enable-mace-aoe-smash: true
 
-  # Fitur Bot Menyerang / PvP Player di Sekitar
   bot-pvp-attack:
     enabled: true
 
-  # Fitur Auto-Kill Player Terdekat (Bot langsung melenyapkan target dalam jangkauan)
   auto-kill-nearest-player:
-    enabled: false                 # Ubah ke true jika ingin bot auto-kill player sekitar secara otomatis
+    enabled: false
 
   ai-activities:
     enabled: true
 
 gaul-messages:
-  - "wkwk parah banget bot semua"
+  - "halo cuy"
   - "ada yang mau pvp ga bro?"
   - "gas CPVP Mace santai!"
   - "lagi nambang dulu ntar baru pvp ya"
   - "mace smash taste nice bro wkwk"
-  - "info lawan keras bos"
-  - "ayo pvp , ga mau? skill isue"
-  - "gabut wok enaknya ngapain yak"
-  - "bowo itu ga rispek loh , bowo gndt"
+  - "info lawan keras mass pada isue"
+  - "skill isue"
+  - "server keren bgs banget jir"
+  - "ayo rame in server ini , mau gw bantai"
