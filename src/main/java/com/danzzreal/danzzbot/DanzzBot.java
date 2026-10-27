@@ -573,3 +573,4 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             }
         }.runTaskTimer(this, 2L, 2L);
     }
+}
