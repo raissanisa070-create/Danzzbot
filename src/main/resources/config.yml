@@ -1,0 +1,31 @@
+# ==========================================
+# DanzzBot v1.3.0 - Professional Config File
+# ==========================================
+
+settings:
+  default-health: 20.0
+  pvp-damage: 7.5
+  detection-range: 14.0
+  auto-chat-interval-ticks: 300
+  enable-totem-pop-effect: true
+  enable-mace-aoe-smash: true
+
+  # Pengaturan Health Indicator pada Nametag Bot (Bisa di-on/off via file ini)
+  health-indicator:
+    enabled: true                  # true untuk aktifkan, false untuk matikan
+    high-health-text: " [❤❤❤❤❤]"   # Teks/hati saat darah penuh
+    low-health-text: " [❤❤]"       # Teks/hati saat darah sekarat/rendah
+
+# List pesan bahasa gaul otomatis
+gaul-messages:
+  - "wkwk parah banget dah ini server"
+  - "ada yang mau pvp ga bro?"
+  - "gas CPVP Mace santai!"
+  - "lagi nambang dulu ntar baru pvp ya"
+  - "mace smash taste nice bro wkwk"
+  - "anjay keren amat skinnya"
+  - "bentar lagi kumpulin kayu nih"
+  - "bro bagi makan dong laper wkwk"
+  - "spotted player, siap-siap pvp!"
+  - "halo salam kenal semuanya"
+  - "info lawan keras dong wkwk masa pada skill isue"
