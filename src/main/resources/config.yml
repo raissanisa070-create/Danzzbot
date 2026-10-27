@@ -1,5 +1,5 @@
 # ==========================================
-# DanzzBot v1.3.0 - Config Master
+# DanzzBot v1.3.0 - Master Config
 # ==========================================
 
 settings:
@@ -10,7 +10,14 @@ settings:
 # Skin Default & Model Lengan (pilih "wide" untuk Steve atau "slim" untuk Alex)
 default-skin:
   url: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  model: "wide" # Pilihan: "wide" atau "slim"
+  model: "wide"
+
+# Teks keren yang muncul di konsol saat plugin dimuat / server direstart
+restart-messages:
+  - "=========================================="
+  - "  DanzzBot v1.3.0 Berhasil Dimuat Ulang!  "
+  - "  Server AI Fake Player Siap Digunakan.    "
+  - "=========================================="
 
 # Pengaturan URL MineSkin khusus untuk setiap ikon tombol di dalam Menu GUI
 gui-heads:
@@ -63,7 +70,7 @@ gaul-messages:
   - "gas CPVP Mace santai!"
   - "lagi nambang dulu ntar baru pvp ya"
   - "mace smash taste nice bro wkwk"
-  - "server bagus jir"
-  - "ayo ramein mau ge bantai"
-  - "info lawan keras bos"
-  "gbt jir enknya ngapain yak"
+  - "gg sih serbernya"
+  - "never hc one top"
+  - "gbt wok enknya ngapin?"
+  - "ramein mau gw bantai ini"
