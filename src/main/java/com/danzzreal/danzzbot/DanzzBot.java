@@ -85,13 +85,18 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
 
     @Override
     public void onEnable() {
+        // Membuat folder data plugin otomatis di server/plugins/DanzzBot/
+        if (!getDataFolder().exists()) {
+            getDataFolder().mkdirs();
+        }
+
         String[] cmds = {"botgui", "botcreate", "botspawn", "botrename", "botskin", "nametag", "botgradient"};
         for (String cmd : cmds) {
             if (getCommand(cmd) != null) getCommand(cmd).setExecutor(this);
         }
         getServer().getPluginManager().registerEvents(this, this);
         startHumanoidAnimationTask();
-        getLogger().info("DanzzBot v1.3.0 Updated: List Button moved to Page 1!");
+        getLogger().info("DanzzBot v1.3.0 Full GUI & Folder Initialized Successfully!");
     }
 
     @Override
@@ -190,7 +195,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
     // GUI MULTI-PAGE SYSTEM
     // ==========================================
 
-    // Page 1: Main Menu (Tombol List & Page 2 ada di sini)
+    // Page 1: Main Menu (Tombol List & Page 2 berada di sini)
     private void openPage1(Player player) {
         Inventory gui = Bukkit.createInventory(null, 27, GUI_PAGE_1);
         
@@ -198,7 +203,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         gui.setItem(11, createCustomHead("Steve", ChatColor.GREEN + "➡️ Go to Page 2 (Create & Manage)", 
                 Arrays.asList(ChatColor.GRAY + "Atur pembuatan bot, skin,", ChatColor.GRAY + "nametag, dan gradient warna.")));
         
-        // Button List Bot Langsung di Page 1 (Supaya mudah terlihat)
+        // Button List Bot Langsung di Page 1 (Mudah diakses)
         gui.setItem(15, createCustomHead("MHF_TNTServer", ChatColor.GOLD + "📋 Open Bot List Page", 
                 Arrays.asList(ChatColor.GRAY + "Melihat seluruh bot yang terdaftar", ChatColor.GRAY + "dan langsung spawn ke game.")));
         
@@ -399,5 +404,5 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             }
         }.runTaskTimer(this, 2L, 2L);
     }
-            }
+                                             }
             
