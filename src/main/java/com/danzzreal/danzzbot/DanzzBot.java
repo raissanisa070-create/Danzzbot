@@ -1,14 +1,10 @@
 package com.danzzreal.danzzbot;
 
-import com.destroystokyo.paper.profile.PlayerProfile;
-import com.destroystokyo.paper.profile.Property;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.Particle;
 import org.bukkit.Sound;
-import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -22,7 +18,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.server.ServerListPingEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
@@ -159,19 +154,6 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
         botRegistry.clear();
     }
 
-    @EventHandler
-    public void onPing(ServerListPingEvent e) {
-        int real = Bukkit.getOnlinePlayers().size();
-        int bots = 0;
-        for (BotSession b : botRegistry.values()) {
-            if (b.isSpawned()) {
-                bots++;
-                e.getPlayerSample().add(Bukkit.createProfile(UUID.randomUUID(), b.getName()));
-            }
-        }
-        e.setNumPlayers(real + bots);
-    }
-
     @Override
     public List<String> onTabComplete(CommandSender s, Command c, String alias, String[] args) {
         List<String> list = new ArrayList<>();
@@ -245,7 +227,10 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             if (b != null) {
                 b.setSkinUrl(args[2]);
                 b.setModelType(args[3]);
-                p.sendMessage(ChatColor.GREEN + "🎨 Skin diperbarui!");
+                p.sendMessage(ChatColor.GREEN + "🎨 Skin diperbarui ke URL MineSkin!");
+                if (b.getEntity() != null) {
+                    loadStandSkin(b.getEntity(), b.getName(), b.getSkinUrl());
+                }
             }
             return true;
         }
@@ -421,14 +406,14 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             if (lore != null) meta.setLore(lore);
             head.setItemMeta(meta);
         }
-        loadSkin(head, url);
+        loadSkinAsync(head, url);
         return head;
     }
 
-    private void loadSkin(ItemStack head, String url) {
+    private void loadStandSkin(ArmorStand stand, String name, String skinUrl) {
         Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
             try {
-                String api = url.contains("api.mineskin.org") ? url : "https://api.mineskin.org/get/id/" + url.substring(url.lastIndexOf('/') + 1);
+                String api = skinUrl.contains("api.mineskin.org") ? skinUrl : "https://api.mineskin.org/get/id/" + skinUrl.substring(skinUrl.lastIndexOf('/') + 1);
                 HttpURLConnection conn = (HttpURLConnection) new URL(api).openConnection();
                 conn.setRequestMethod("GET");
                 BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -441,44 +426,17 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
                 String sig = getJsonVal(res, "signature");
                 if (val != null && sig != null) {
                     Bukkit.getScheduler().runTask(this, () -> {
-                        SkullMeta meta = (SkullMeta) head.getItemMeta();
-                        if (meta != null) {
-                            PlayerProfile prof = Bukkit.createProfile(UUID.randomUUID());
-                            prof.setProperty(new Property("textures", val, sig));
-                            meta.setPlayerProfile(prof);
-                            head.setItemMeta(meta);
-                        }
-                    });
-                }
-            } catch (Exception ignored) {}
-        });
-    }
-
-    private void loadStandSkin(ArmorStand stand, String name, String url) {
-        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
-            try {
-                String api = url.contains("api.mineskin.org") ? url : "https://api.mineskin.org/get/id/" + url.substring(url.lastIndexOf('/') + 1);
-                HttpURLConnection conn = (HttpURLConnection) new URL(api).openConnection();
-                conn.setRequestMethod("GET");
-                BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = r.readLine()) != null) sb.append(line);
-                r.close();
-                String res = sb.toString();
-                String val = getJsonVal(res, "value");
-                String sig = getJsonVal(res, "signature");
-                if (val != null && sig != null) {
-                    Bukkit.getScheduler().runTask(this, () -> {
-                        PlayerProfile prof = Bukkit.createProfile(UUID.randomUUID(), name);
-                        prof.setProperty(new Property("textures", val, sig));
-                        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-                        SkullMeta meta = (SkullMeta) head.getItemMeta();
-                        if (meta != null) {
-                            meta.setPlayerProfile(prof);
-                            head.setItemMeta(meta);
-                        }
-                        stand.getEquipment().setHelmet(head);
+                        try {
+                            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+                            SkullMeta meta = (SkullMeta) head.getItemMeta();
+                            if (meta != null) {
+                                PlayerProfile profile = Bukkit.createProfile(UUID.randomUUID(), name);
+                                profile.setProperty(new com.destroystokyo.paper.profile.Property("textures", val, sig));
+                                meta.setPlayerProfile(profile);
+                                head.setItemMeta(meta);
+                            }
+                            stand.getEquipment().setHelmet(head);
+                        } catch (Exception ignored) {}
                     });
                 }
             } catch (Exception ignored) {}
@@ -572,4 +530,3 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             }
         }.runTaskTimer(this, 2L, 2L);
     }
-}
