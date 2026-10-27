@@ -3,16 +3,28 @@ version: 1.3.0
 main: com.danzzreal.danzzbot.DanzzBot
 api-version: '1.21'
 author: DanzzReal
-description: Plugin Advanced Fake Player GUI Multi-Page & Humanoid AI.
+description: Advanced Fake Player AI dengan Reload Config, Health Indicator, Totem Pop, Mace AOE, & Mode Possess.
 commands:
   botgui:
-    description: Buka menu GUI utama DanzzBot
+    description: Buka menu GUI DanzzBot
+    permission: danzzbot.admin
+  botreload:
+    description: Reload konfigurasi config.yml dari hosting
     permission: danzzbot.admin
   botcreate:
     description: Tambah bot ke daftar list
     permission: danzzbot.admin
   botspawn:
     description: Spawn bot dari list ke dunia
+    permission: danzzbot.admin
+  botpossess:
+    description: Rasuki/kontrol bot
+    permission: danzzbot.admin
+  botunpossess:
+    description: Keluar dari mode rasuk bot
+    permission: danzzbot.admin
+  botchat:
+    description: Kirim pesan chat gaul atas nama bot
     permission: danzzbot.admin
   botrename:
     description: Ganti nama bot
