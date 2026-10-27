@@ -435,3 +435,4 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
         Inventory gui = Bukkit.createInventory(null, 36, GUI_PAGE_2);
 
         gui.setItem(10, createConfigHead("gui-heads.create-bot", ChatColor.AQUA + "➕ Create Bot", null)
+                    
