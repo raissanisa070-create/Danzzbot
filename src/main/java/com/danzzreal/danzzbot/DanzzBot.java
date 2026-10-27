@@ -97,6 +97,14 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
         public UUID getTargetPlayerUUID() { return targetPlayerUUID; }
         public void setTargetPlayerUUID(UUID u) { this.targetPlayerUUID = u; }
         public ItemStack[] getInventoryStorage() { return inventoryStorage; }
+        
+        // METHOD YANG SEBELUMNYA KURANG (PENYEBAB ERROR)
+        public void setInventoryStorage(ItemStack[] items) {
+            if (items != null) {
+                System.arraycopy(items, 0, this.inventoryStorage, 0, Math.min(items.length, this.inventoryStorage.length));
+            }
+        }
+
         public BotActivity getCurrentActivity() { return currentActivity; }
         public void setCurrentActivity(BotActivity a) { this.currentActivity = a; }
         public Vector getMoveVector() { return moveVector; }
@@ -565,4 +573,3 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             }
         }.runTaskTimer(this, 2L, 2L);
     }
-}
