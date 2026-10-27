@@ -1,5 +1,5 @@
 # ==========================================
-# DanzzBot v1.3.0 - Ultimate Master Config
+# DanzzBot v1.3.0 - Config with Custom GUI Heads
 # ==========================================
 
 settings:
@@ -7,12 +7,29 @@ settings:
   pvp-damage: 9.0
   detection-range: 16.0
 
-# Pengaturan Skin Default Bot & GUI Heads (Menggunakan URL MineSkin)
 default-skin:
   url: "https://minesk.in/b99aa1f02594468c95307736628af54a"
   model: "wide"
 
-# Status On/Off Fitur (Bisa di-klik langsung melalui /botgui Page 2)
+# Pengaturan URL MineSkin khusus untuk setiap ikon tombol di dalam Menu GUI
+gui-heads:
+  page1-to-page2: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  possess-bot: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  bot-list: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  create-bot: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  change-skin: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  view-inventory: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  reload-config: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  back-button: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  
+  # Tombol Indikator Status Fitur di Page 2
+  toggle-pvp: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  toggle-autokill: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  toggle-autochat: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  toggle-possess: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  toggle-ai: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+  toggle-health: "https://minesk.in/b99aa1f02594468c95307736628af54a"
+
 features:
   health-indicator:
     enabled: true
@@ -45,7 +62,7 @@ gaul-messages:
   - "gas CPVP Mace santai!"
   - "lagi nambang dulu ntar baru pvp ya"
   - "mace smash taste nice bro wkwk"
-  - "info lawan keras mass pada isue"
-  - "skill isue"
-  - "server keren bgs banget jir"
-  - "ayo rame in server ini , mau gw bantai"
+  - "ayo buat base brg brg"
+  - "pada gabut ga"
+  - "servernya bagus jir"
+  - "ayo oada ramein server mau ge bantai"
