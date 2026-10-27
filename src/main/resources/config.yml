@@ -1,22 +1,40 @@
 # ==========================================
-# DanzzBot v1.3.0 - Professional Config File
+# DanzzBot v1.3.0 - Danzz Ganteng Config File
 # ==========================================
 
+# 1. Pengaturan Dasar Atribut Bot
 settings:
   default-health: 20.0
   pvp-damage: 7.5
   detection-range: 14.0
-  auto-chat-interval-ticks: 300
-  enable-totem-pop-effect: true
-  enable-mace-aoe-smash: true
 
-  # Pengaturan Health Indicator pada Nametag Bot (Bisa di-on/off via file ini)
+# 2. Toggle Fitur On / Off (Bisa diatur sesuka hati)
+features:
+  # Health Indicator pada Nametag Bot
   health-indicator:
-    enabled: true                  # true untuk aktifkan, false untuk matikan
-    high-health-text: " [❤❤❤❤❤]"   # Teks/hati saat darah penuh
-    low-health-text: " [❤❤]"       # Teks/hati saat darah sekarat/rendah
+    enabled: true                  # true = On, false = Off
+    high-health-text: " [❤❤❤❤❤]"   # Format saat HP penuh
+    low-health-text: " [❤❤]"       # Format saat HP sekarat
 
-# List pesan bahasa gaul otomatis
+  # Sistem Chat Otomatis Bahasa Gaul
+  auto-chat:
+    enabled: true                  # true = On, false = Off
+    interval-ticks: 300            # Interval waktu chat (300 tick = ~15 detik)
+
+  # Mode Possess / Rasuk Kontrol Bot
+  possess-mode:
+    enabled: true                  # true = On, false = Off
+
+  # Fitur Efek Combat Modern
+  combat-effects:
+    enable-totem-pop: true        # Fitur efek Totem Pop saat HP kritis
+    enable-mace-aoe-smash: true   # Fitur Guncangan Smash AOE & Blast Mace
+
+  # Siklus Aktivitas AI Mandiri (Mining, Woodcutting, Exploring)
+  ai-activities:
+    enabled: true                  # true = On, false = Off
+
+# 3. Daftar Pesan Bahasa Gaul Otomatis
 gaul-messages:
   - "wkwk parah banget dah ini server"
   - "ada yang mau pvp ga bro?"
@@ -28,4 +46,4 @@ gaul-messages:
   - "bro bagi makan dong laper wkwk"
   - "spotted player, siap-siap pvp!"
   - "halo salam kenal semuanya"
-  - "info lawan keras dong wkwk masa pada skill isue"
+  
