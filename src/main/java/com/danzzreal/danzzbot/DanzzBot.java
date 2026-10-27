@@ -1,5 +1,7 @@
 package com.danzzreal.danzzbot;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
+import com.destroystokyo.paper.profile.Property;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -35,7 +37,7 @@ import java.util.*;
 public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCompleter, Listener {
 
     public enum BotActivity {
-        EXPLORING("Berkeliaran"), MINING("Mining"), BUILDING("Building"), PVP("PVP");
+        EXPLORING("Berkeliaran"), MINING("Mining"), BUILDING("Building"), PVP("PVP"), CPVP("Crystal PvP");
         private final String name;
         BotActivity(String name) { this.name = name; }
         public String getDisplayName() { return name; }
@@ -45,10 +47,9 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
         private String name, nametag, gradientColor, skinUrl, modelType;
         private Location location;
         private ArmorStand entity;
-        private boolean spawned = false, possessed = false, totemPopped = false;
+        private boolean spawned = false, possessed = false, cpvpMode = false;
         private double health = 20.0;
-        private int animTick = 0, attackCooldown = 0, chatTimer = 0;
-        private UUID targetPlayerUUID = null;
+        private int animTick = 0, attackCooldown = 0, cpvpCooldown = 0;
         private final ItemStack[] inventoryStorage = new ItemStack[27];
         private BotActivity currentActivity = BotActivity.EXPLORING;
         private Vector moveVector = new Vector(0, 0, 0);
@@ -79,18 +80,16 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
         public void setSpawned(boolean s) { this.spawned = s; }
         public boolean isPossessed() { return possessed; }
         public void setPossessed(boolean p) { this.possessed = p; }
+        public boolean isCpvpMode() { return cpvpMode; }
+        public void setCpvpMode(boolean c) { this.cpvpMode = c; }
         public double getHealth() { return health; }
         public void setHealth(double h) { this.health = h; }
         public int getAnimTick() { return animTick; }
         public void setAnimTick(int a) { this.animTick = a; }
         public int getAttackCooldown() { return attackCooldown; }
         public void setAttackCooldown(int a) { this.attackCooldown = a; }
-        public int getChatTimer() { return chatTimer; }
-        public void setChatTimer(int c) { this.chatTimer = c; }
-        public boolean isTotemPopped() { return totemPopped; }
-        public void setTotemPopped(boolean t) { this.totemPopped = t; }
-        public UUID getTargetPlayerUUID() { return targetPlayerUUID; }
-        public void setTargetPlayerUUID(UUID u) { this.targetPlayerUUID = u; }
+        public int getCpvpCooldown() { return cpvpCooldown; }
+        public void setCpvpCooldown(int c) { this.cpvpCooldown = c; }
         public ItemStack[] getInventoryStorage() { return inventoryStorage; }
         
         public void setInventoryStorage(ItemStack[] items) {
@@ -164,8 +163,10 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             else if (args.length == 4) { list.add("wide"); list.add("slim"); }
         } else if (cmd.equals("botkill")) {
             if (args.length == 1) list.addAll(botRegistry.keySet());
-            else if (args.length == 2) { list.add("kill"); list.add("remove"); }
-        } else if (cmd.equals("botitem") || cmd.equals("botinv") || cmd.equals("botspawn") || cmd.equals("botpossess") || cmd.equals("botchat") || cmd.equals("nametag") || cmd.equals("botgradient")) {
+        } else if (cmd.equals("botitem")) {
+            if (args.length == 1) list.addAll(botRegistry.keySet());
+            else if (args.length == 2) { list.add("mace"); list.add("sword"); list.add("cpvp"); list.add("anchor"); }
+        } else if (cmd.equals("botinv") || cmd.equals("botspawn") || cmd.equals("botpossess") || cmd.equals("botchat") || cmd.equals("nametag") || cmd.equals("botgradient")) {
             if (args.length == 1) list.addAll(botRegistry.keySet());
         }
         return list;
@@ -207,6 +208,32 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             }
             return true;
         }
+        if (cmd.equals("botitem") && args.length >= 2) {
+            BotSession b = botRegistry.get(args[0]);
+            if (b != null && b.getEntity() != null) {
+                String type = args[1].toLowerCase();
+                if (type.equals("mace")) {
+                    b.getEntity().getEquipment().setItemInMainHand(new ItemStack(Material.MACE));
+                    b.setCpvpMode(false);
+                    p.sendMessage(ChatColor.GREEN + "✔ " + b.getName() + " diberi Mace!");
+                } else if (type.equals("sword")) {
+                    b.getEntity().getEquipment().setItemInMainHand(new ItemStack(Material.NETHERITE_SWORD));
+                    b.setCpvpMode(false);
+                    p.sendMessage(ChatColor.GREEN + "✔ " + b.getName() + " diberi Pedang Netherite!");
+                } else if (type.equals("cpvp")) {
+                    b.setCpvpMode(true);
+                    b.getEntity().getEquipment().setItemInMainHand(new ItemStack(Material.END_CRYSTAL));
+                    b.getEntity().getEquipment().setItemInOffHand(new ItemStack(Material.OBSIDIAN));
+                    p.sendMessage(ChatColor.LIGHT_PURPLE + "🔮 " + b.getName() + " masuk Mode Crystal PvP!");
+                } else if (type.equals("anchor")) {
+                    b.setCpvpMode(true);
+                    b.getEntity().getEquipment().setItemInMainHand(new ItemStack(Material.RESPAWN_ANCHOR));
+                    b.getEntity().getEquipment().setItemInOffHand(new ItemStack(Material.GLOWSTONE));
+                    p.sendMessage(ChatColor.GOLD + "💥 " + b.getName() + " masuk Mode Anchor Glow PvP!");
+                }
+            }
+            return true;
+        }
         if (cmd.equals("botpossess") && args.length > 0) {
             BotSession b = botRegistry.get(args[0]);
             if (b != null && b.isSpawned()) {
@@ -227,10 +254,8 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             if (b != null) {
                 b.setSkinUrl(args[2]);
                 b.setModelType(args[3]);
-                p.sendMessage(ChatColor.GREEN + "🎨 Skin diperbarui ke URL MineSkin!");
-                if (b.getEntity() != null) {
-                    loadStandSkin(b.getEntity(), b.getName(), b.getSkinUrl());
-                }
+                p.sendMessage(ChatColor.GREEN + "🎨 Skin diperbarui!");
+                if (b.getEntity() != null) loadStandSkin(b.getEntity(), b.getName(), b.getSkinUrl());
             }
             return true;
         }
@@ -406,14 +431,14 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             if (lore != null) meta.setLore(lore);
             head.setItemMeta(meta);
         }
-        loadSkinAsync(head, url);
+        loadSkin(head, url);
         return head;
     }
 
-    private void loadStandSkin(ArmorStand stand, String name, String skinUrl) {
+    private void loadSkin(ItemStack head, String url) {
         Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
             try {
-                String api = skinUrl.contains("api.mineskin.org") ? skinUrl : "https://api.mineskin.org/get/id/" + skinUrl.substring(skinUrl.lastIndexOf('/') + 1);
+                String api = url.contains("api.mineskin.org") ? url : "https://api.mineskin.org/get/id/" + url.substring(url.lastIndexOf('/') + 1);
                 HttpURLConnection conn = (HttpURLConnection) new URL(api).openConnection();
                 conn.setRequestMethod("GET");
                 BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -426,17 +451,44 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
                 String sig = getJsonVal(res, "signature");
                 if (val != null && sig != null) {
                     Bukkit.getScheduler().runTask(this, () -> {
-                        try {
-                            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-                            SkullMeta meta = (SkullMeta) head.getItemMeta();
-                            if (meta != null) {
-                                PlayerProfile profile = Bukkit.createProfile(UUID.randomUUID(), name);
-                                profile.setProperty(new com.destroystokyo.paper.profile.Property("textures", val, sig));
-                                meta.setPlayerProfile(profile);
-                                head.setItemMeta(meta);
-                            }
-                            stand.getEquipment().setHelmet(head);
-                        } catch (Exception ignored) {}
+                        SkullMeta meta = (SkullMeta) head.getItemMeta();
+                        if (meta != null) {
+                            PlayerProfile prof = Bukkit.createProfile(UUID.randomUUID());
+                            prof.setProperty(new Property("textures", val, sig));
+                            meta.setPlayerProfile(prof);
+                            head.setItemMeta(meta);
+                        }
+                    });
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
+    private void loadStandSkin(ArmorStand stand, String name, String url) {
+        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+            try {
+                String api = url.contains("api.mineskin.org") ? url : "https://api.mineskin.org/get/id/" + url.substring(url.lastIndexOf('/') + 1);
+                HttpURLConnection conn = (HttpURLConnection) new URL(api).openConnection();
+                conn.setRequestMethod("GET");
+                BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line);
+                r.close();
+                String res = sb.toString();
+                String val = getJsonVal(res, "value");
+                String sig = getJsonVal(res, "signature");
+                if (val != null && sig != null) {
+                    Bukkit.getScheduler().runTask(this, () -> {
+                        PlayerProfile prof = Bukkit.createProfile(UUID.randomUUID(), name);
+                        prof.setProperty(new Property("textures", val, sig));
+                        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+                        SkullMeta meta = (SkullMeta) head.getItemMeta();
+                        if (meta != null) {
+                            meta.setPlayerProfile(prof);
+                            head.setItemMeta(meta);
+                        }
+                        stand.getEquipment().setHelmet(head);
                     });
                 }
             } catch (Exception ignored) {}
@@ -481,7 +533,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             public void run() {
                 FileConfiguration cfg = getConfig();
                 boolean pvp = cfg.getBoolean("features.bot-pvp-attack.enabled", true);
-                double pvpDmg = cfg.getDouble("settings.pvp-damage", 9.0);
+                double pvpDmg = cfg.getDouble("settings.pvp-damage", 12.0);
                 double range = cfg.getDouble("settings.detection-range", 16.0);
 
                 for (BotSession b : botRegistry.values()) {
@@ -491,6 +543,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
                     ent.setCustomName(b.getFormattedNametag(cfg));
 
                     if (b.getAttackCooldown() > 0) b.setAttackCooldown(b.getAttackCooldown() - 1);
+                    if (b.getCpvpCooldown() > 0) b.setCpvpCooldown(b.getCpvpCooldown() - 1);
 
                     Player target = null;
                     for (Entity n : loc.getWorld().getNearbyEntities(loc, range, range, range)) {
@@ -509,11 +562,23 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
                     if (target != null && pvp) {
                         Vector dir = target.getLocation().toVector().subtract(loc.toVector()).normalize();
                         loc.setDirection(dir);
-                        if (loc.distance(target.getLocation()) > 2.0) {
-                            loc.add(dir.multiply(0.42));
+                        double distance = loc.distance(target.getLocation());
+
+                        // Mode Crystal PvP / Anchor Glow
+                        if (b.isCpvpMode() && b.getCpvpCooldown() == 0 && distance <= 6.0) {
+                            Location targetFoot = target.getLocation().getBlock().getLocation();
+                            targetFoot.getWorld().spawnEntity(targetFoot, EntityType.ENDER_CRYSTAL);
+                            targetFoot.getWorld().createExplosion(targetFoot, 5.0f, false, false);
+                            targetFoot.getWorld().playSound(targetFoot, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
+                            b.setCpvpCooldown(30);
+                        } 
+                        // Mode Melee biasa (Mace & Netherite Sword)
+                        else if (distance > 2.0) {
+                            loc.add(dir.multiply(0.45));
                             ent.teleport(loc);
                         } else if (b.getAttackCooldown() == 0) {
                             target.damage(pvpDmg, ent);
+                            target.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_STRONG, 1.0f, 1.0f);
                             b.setAttackCooldown(10);
                         }
                     } else {
@@ -530,3 +595,4 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             }
         }.runTaskTimer(this, 2L, 2L);
     }
+}
