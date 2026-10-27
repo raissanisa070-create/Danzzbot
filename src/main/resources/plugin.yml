@@ -3,31 +3,49 @@ version: 1.3.0
 main: com.danzzreal.danzzbot.DanzzBot
 api-version: '1.21'
 author: DanzzReal
-description: Ultimate Professional Fake Player AI with Custom GUI Head URLs via Config.
+description: Ultimate Professional Fake Player AI with MineSkin Support, Configurable GUI Heads, and Live Toggles.
 commands:
   botgui:
+    description: Membuka menu GUI utama kontrol bot
     permission: danzzbot.admin
   botreload:
+    description: Memuat ulang konfigurasi plugin
     permission: danzzbot.admin
   botcreate:
+    description: Membuat sesi bot baru
     permission: danzzbot.admin
   botspawn:
+    description: Memanggil/spawn bot ke dunia
     permission: danzzbot.admin
   botpossess:
+    description: Mengendalikan/merasuk bot secara langsung
     permission: danzzbot.admin
   botunpossess:
+    description: Keluar dari mode rasuk bot
     permission: danzzbot.admin
   botchat:
+    description: Mengatur chat otomatis bot
     permission: danzzbot.admin
   botkill:
+    description: Membunuh atau menghapus bot
     permission: danzzbot.admin
   botitem:
+    description: Memberikan item tangan/armor ke bot
     permission: danzzbot.admin
   botinv:
+    description: Membuka inventori/tas bot
     permission: danzzbot.admin
   botskin:
+    description: Mengatur URL MineSkin dan model (wide/slim) bot
     permission: danzzbot.admin
   nametag:
+    description: Mengubah nama nametag bot
     permission: danzzbot.admin
   botgradient:
+    description: Mengubah warna gradient nametag bot
     permission: danzzbot.admin
+
+permissions:
+  danzzbot.admin:
+    description: Akses penuh untuk administrator DanzzBot
+    default: op
