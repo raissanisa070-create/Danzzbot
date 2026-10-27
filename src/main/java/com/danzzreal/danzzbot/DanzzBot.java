@@ -98,7 +98,6 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
         public void setTargetPlayerUUID(UUID u) { this.targetPlayerUUID = u; }
         public ItemStack[] getInventoryStorage() { return inventoryStorage; }
         
-        // METHOD YANG SEBELUMNYA KURANG (PENYEBAB ERROR)
         public void setInventoryStorage(ItemStack[] items) {
             if (items != null) {
                 System.arraycopy(items, 0, this.inventoryStorage, 0, Math.min(items.length, this.inventoryStorage.length));
