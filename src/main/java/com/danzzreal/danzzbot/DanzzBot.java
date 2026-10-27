@@ -1,5 +1,10 @@
 package com.danzzreal.danzzbot;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -9,6 +14,8 @@ import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -17,9 +24,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.server.ServerListPingEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -28,25 +35,43 @@ import org.bukkit.util.Vector;
 
 import java.util.*;
 
-public final class DanzzBot extends JavaPlugin implements CommandExecutor, Listener {
+public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCompleter, Listener {
+
+    public enum BotActivity {
+        EXPLORING("Berkeliaran"),
+        MINING("Nambang"),
+        WOODCUTTING("Woodcutting"),
+        PVP("PVP Modern (CPVP/Mace)");
+
+        private final String displayName;
+        BotActivity(String name) { this.displayName = name; }
+        public String getDisplayName() { return displayName; }
+    }
 
     public static class BotSession {
         private String name;
         private String nametag;
         private String gradientColor;
-        private String skinOwner;
+        private String skinUrl;
+        private String modelType;
         private Location location;
         private ArmorStand entity;
         private boolean spawned = false;
         private boolean possessed = false;
+        private double health = 20.0;
         private int animTick = 0;
+        private int attackCooldown = 0;
+        private int chatTimer = 0;
+        private boolean totemPopped = false;
+        private BotActivity currentActivity = BotActivity.EXPLORING;
         private Vector moveVector = new Vector(0, 0, 0);
 
         public BotSession(String name) {
             this.name = name;
             this.nametag = name;
             this.gradientColor = "&f";
-            this.skinOwner = name;
+            this.skinUrl = "";
+            this.modelType = "wide";
         }
 
         public String getName() { return name; }
@@ -55,8 +80,10 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         public void setNametag(String nametag) { this.nametag = nametag; }
         public String getGradientColor() { return gradientColor; }
         public void setGradientColor(String gradientColor) { this.gradientColor = gradientColor; }
-        public String getSkinOwner() { return skinOwner; }
-        public void setSkinOwner(String skinOwner) { this.skinOwner = skinOwner; }
+        public String getSkinUrl() { return skinUrl; }
+        public void setSkinUrl(String skinUrl) { this.skinUrl = skinUrl; }
+        public String getModelType() { return modelType; }
+        public void setModelType(String modelType) { this.modelType = modelType; }
         public Location getLocation() { return location; }
         public void setLocation(Location location) { this.location = location; }
         public ArmorStand getEntity() { return entity; }
@@ -65,38 +92,57 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         public void setSpawned(boolean spawned) { this.spawned = spawned; }
         public boolean isPossessed() { return possessed; }
         public void setPossessed(boolean possessed) { this.possessed = possessed; }
+        public double getHealth() { return health; }
+        public void setHealth(double health) { this.health = health; }
         public int getAnimTick() { return animTick; }
         public void setAnimTick(int animTick) { this.animTick = animTick; }
+        public int getAttackCooldown() { return attackCooldown; }
+        public void setAttackCooldown(int attackCooldown) { this.attackCooldown = attackCooldown; }
+        public int getChatTimer() { return chatTimer; }
+        public void setChatTimer(int chatTimer) { this.chatTimer = chatTimer; }
+        public boolean isTotemPopped() { return totemPopped; }
+        public void setTotemPopped(boolean totemPopped) { this.totemPopped = totemPopped; }
+        public BotActivity getCurrentActivity() { return currentActivity; }
+        public void setCurrentActivity(BotActivity currentActivity) { this.currentActivity = currentActivity; }
         public Vector getMoveVector() { return moveVector; }
         public void setMoveVector(Vector moveVector) { this.moveVector = moveVector; }
 
-        public String getFormattedNametag() {
-            return ChatColor.translateAlternateColorCodes('&', gradientColor + nametag);
+        public String getFormattedNametag(FileConfiguration config) {
+            String baseName = ChatColor.translateAlternateColorCodes('&', gradientColor + nametag);
+            boolean indicatorEnabled = config.getBoolean("features.health-indicator.enabled", true);
+            if (indicatorEnabled) {
+                String highText = config.getString("features.health-indicator.high-health-text", " [❤❤❤❤❤]");
+                String lowText = config.getString("features.health-indicator.low-health-text", " [❤❤]");
+                String hearts = health > 10 ? ChatColor.GREEN + highText : ChatColor.RED + lowText;
+                return baseName + hearts;
+            }
+            return baseName;
         }
     }
 
     private final Map<String, BotSession> botRegistry = new HashMap<>();
     private final Map<UUID, String> playerPossessions = new HashMap<>();
 
-    // GUI Titles
     private final String GUI_PAGE_1 = ChatColor.DARK_PURPLE + "✦ DanzzBot | Main Menu (Page 1) ✦";
-    private final String GUI_PAGE_2 = ChatColor.GOLD + "✦ DanzzBot | Create & Manage (Page 2) ✦";
-    private final String GUI_PAGE_LIST = ChatColor.BLUE + "✦ DanzzBot | Registered Bots List ✦";
+    private final String GUI_PAGE_2 = ChatColor.GOLD + "✦ DanzzBot | Control Panel (Page 2) ✦";
+    private final String GUI_PAGE_LIST = ChatColor.BLUE + "✦ DanzzBot | Bot Spawn List ✦";
+    private final String GUI_POSSESS_SELECT = ChatColor.LIGHT_PURPLE + "✦ Select Bot to Possess ✦";
+    private final String GUI_SELECT_SKIN = ChatColor.GREEN + "✦ Select Bot for Skin Config ✦";
 
     @Override
     public void onEnable() {
-        // Membuat folder data plugin otomatis di server/plugins/DanzzBot/
-        if (!getDataFolder().exists()) {
-            getDataFolder().mkdirs();
-        }
+        saveDefaultConfig();
 
-        String[] cmds = {"botgui", "botcreate", "botspawn", "botrename", "botskin", "nametag", "botgradient"};
+        String[] cmds = {"botgui", "botreload", "botcreate", "botspawn", "botpossess", "botunpossess", "botchat", "botrename", "botskin", "nametag", "botgradient"};
         for (String cmd : cmds) {
-            if (getCommand(cmd) != null) getCommand(cmd).setExecutor(this);
+            if (getCommand(cmd) != null) {
+                getCommand(cmd).setExecutor(this);
+                getCommand(cmd).setTabCompleter(this);
+            }
         }
         getServer().getPluginManager().registerEvents(this, this);
-        startHumanoidAnimationTask();
-        getLogger().info("DanzzBot v1.3.0 Full GUI & Folder Initialized Successfully!");
+        startAdvancedPlayerEngine();
+        getLogger().info("DanzzBot v1.3.0 Master Config Active!");
     }
 
     @Override
@@ -105,6 +151,42 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             if (bot.getEntity() != null) bot.getEntity().remove();
         }
         botRegistry.clear();
+        playerPossessions.clear();
+    }
+
+    @EventHandler
+    public void onServerListPing(ServerListPingEvent event) {
+        int realPlayers = Bukkit.getOnlinePlayers().size();
+        int spawnedBots = 0;
+        List<PlayerProfile> profiles = new ArrayList<>();
+
+        for (BotSession bot : botRegistry.values()) {
+            if (bot.isSpawned()) {
+                spawnedBots++;
+                PlayerProfile profile = Bukkit.createProfile(UUID.randomUUID(), bot.getName());
+                profiles.add(profile);
+            }
+        }
+
+        event.setNumPlayers(realPlayers + spawnedBots);
+        for (PlayerProfile profile : profiles) {
+            event.getPlayerSample().add(profile);
+        }
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        List<String> suggestions = new ArrayList<>();
+        String cmd = command.getName().toLowerCase();
+
+        if (cmd.equals("botskin")) {
+            if (args.length == 1) suggestions.add("url");
+            else if (args.length == 2 && args[0].equalsIgnoreCase("url")) suggestions.addAll(botRegistry.keySet());
+            else if (args.length == 4) { suggestions.add("wide"); suggestions.add("slim"); }
+        } else if (cmd.equals("botspawn") || cmd.equals("botpossess") || cmd.equals("botchat") || cmd.equals("botrename") || cmd.equals("nametag") || cmd.equals("botgradient")) {
+            if (args.length == 1) suggestions.addAll(botRegistry.keySet());
+        }
+        return suggestions;
     }
 
     @Override
@@ -118,6 +200,13 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             return true;
         }
 
+        if (cmd.equals("botreload")) {
+            reloadConfig();
+            player.sendMessage(ChatColor.GREEN + "✔ Konfigurasi DanzzBot (config.yml) berhasil di-reload!");
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+            return true;
+        }
+
         if (cmd.equals("botcreate")) {
             if (args.length < 1) {
                 player.sendMessage(ChatColor.YELLOW + "Penggunaan: /botcreate <nama_bot>");
@@ -125,56 +214,95 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             }
             String name = args[0];
             if (botRegistry.containsKey(name)) {
-                player.sendMessage(ChatColor.RED + "Bot dengan nama ini sudah terdaftar di list!");
+                player.sendMessage(ChatColor.RED + "Bot dengan nama ini sudah terdaftar!");
                 return true;
             }
             botRegistry.put(name, new BotSession(name));
-            player.sendMessage(ChatColor.GREEN + "✔ Bot '" + name + "' berhasil ditambahkan ke daftar list!");
+            player.sendMessage(ChatColor.GREEN + "✔ Bot '" + name + "' ditambahkan ke list!");
             return true;
         }
 
         if (cmd.equals("botspawn")) {
             if (args.length < 1) return true;
             spawnBotFromList(args[0], player.getLocation());
-            player.sendMessage(ChatColor.GREEN + "🚀 Bot '" + args[0] + "' berhasil di-spawn!");
+            player.sendMessage(ChatColor.GREEN + "🚀 Bot Manusia '" + args[0] + "' di-spawn!");
             return true;
         }
 
-        if (cmd.equals("botrename")) {
-            if (args.length < 2) return true;
+        if (cmd.equals("botpossess")) {
+            if (!getConfig().getBoolean("features.possess-mode.enabled", true)) {
+                player.sendMessage(ChatColor.RED + "Fitur Mode Possess sedang dimatikan di config.yml!");
+                return true;
+            }
+            if (args.length < 1) {
+                openPossessSelectGUI(player);
+                return true;
+            }
+            BotSession bot = botRegistry.get(args[0]);
+            if (bot != null && bot.isSpawned()) {
+                bot.setPossessed(true);
+                playerPossessions.put(player.getUniqueId(), args[0]);
+                player.teleport(bot.getLocation());
+                player.sendMessage(ChatColor.LIGHT_PURPLE + "🔮 Kamu sekarang mengendalikan bot '" + bot.getName() + "'!");
+            } else {
+                player.sendMessage(ChatColor.RED + "Bot belum di-spawn atau tidak ditemukan!");
+            }
+            return true;
+        }
+
+        if (cmd.equals("botunpossess")) {
+            String botName = playerPossessions.remove(player.getUniqueId());
+            if (botName != null && botRegistry.containsKey(botName)) {
+                botRegistry.get(botName).setPossessed(false);
+            }
+            player.sendMessage(ChatColor.GREEN + "🔮 Berhasil keluar dari mode rasuk bot.");
+            return true;
+        }
+
+        if (cmd.equals("botchat")) {
+            if (args.length < 2) {
+                player.sendMessage(ChatColor.YELLOW + "Penggunaan: /botchat <nama_bot> <pesan_gaul>");
+                return true;
+            }
             BotSession bot = botRegistry.get(args[0]);
             if (bot != null) {
-                botRegistry.remove(args[0]);
-                bot.setName(args[1]);
-                bot.setNametag(args[1]);
-                botRegistry.put(args[1], bot);
-                if (bot.getEntity() != null) bot.getEntity().setCustomName(bot.getFormattedNametag());
-                player.sendMessage(ChatColor.GREEN + "✨ Nama bot diubah menjadi: " + args[1]);
+                StringBuilder msg = new StringBuilder();
+                for (int i = 1; i < args.length; i++) msg.append(args[i]).append(" ");
+                Bukkit.broadcastMessage(bot.getFormattedNametag(getConfig()) + ChatColor.WHITE + ": " + ChatColor.translateAlternateColorCodes('&', msg.toString().trim()));
             }
             return true;
         }
 
         if (cmd.equals("botskin")) {
-            if (args.length < 2) return true;
-            BotSession bot = botRegistry.get(args[0]);
-            if (bot != null) {
-                bot.setSkinOwner(args[1]);
-                player.sendMessage(ChatColor.GREEN + "🎨 Skin bot " + args[0] + " diubah ke: " + args[1]);
+            if (args.length >= 4 && args[0].equalsIgnoreCase("url")) {
+                String botName = args[1];
+                String skinUrl = args[2];
+                String model = args[3].toLowerCase();
+
+                BotSession bot = botRegistry.get(botName);
+                if (bot != null) {
+                    bot.setSkinUrl(skinUrl);
+                    bot.setModelType(model.equals("slim") ? "slim" : "wide");
+                    player.sendMessage(ChatColor.GREEN + "🎨 Skin URL untuk " + botName + " berhasil dipasang!");
+                }
+                return true;
             }
+            openSkinSelectGUI(player);
             return true;
         }
 
         if (cmd.equals("nametag")) {
-            if (args.length < 2) return true;
-            BotSession bot = botRegistry.get(args[0]);
-            if (bot != null) {
-                StringBuilder tag = new StringBuilder();
-                for (int i = 1; i < args.length; i++) tag.append(args[i]).append(" ");
-                bot.setNametag(tag.toString().trim());
-                if (bot.getEntity() != null) bot.getEntity().setCustomName(bot.getFormattedNametag());
-                player.sendMessage(ChatColor.GREEN + "🏷️ Nametag diperbarui!");
+            if (args.length >= 2) {
+                BotSession bot = botRegistry.get(args[0]);
+                if (bot != null) {
+                    StringBuilder tag = new StringBuilder();
+                    for (int i = 1; i < args.length; i++) tag.append(args[i]).append(" ");
+                    bot.setNametag(tag.toString().trim());
+                    if (bot.getEntity() != null) bot.getEntity().setCustomName(bot.getFormattedNametag(getConfig()));
+                    player.sendMessage(ChatColor.GREEN + "🏷️ Nametag diperbarui!");
+                }
+                return true;
             }
-            return true;
         }
 
         if (cmd.equals("botgradient")) {
@@ -182,8 +310,8 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             BotSession bot = botRegistry.get(args[0]);
             if (bot != null) {
                 bot.setGradientColor(args[1]);
-                if (bot.getEntity() != null) bot.getEntity().setCustomName(bot.getFormattedNametag());
-                player.sendMessage(ChatColor.GREEN + "🌈 Warna Gradient nametag diperbarui!");
+                if (bot.getEntity() != null) bot.getEntity().setCustomName(bot.getFormattedNametag(getConfig()));
+                player.sendMessage(ChatColor.GREEN + "🌈 Gradient warna diperbarui!");
             }
             return true;
         }
@@ -191,218 +319,114 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         return false;
     }
 
-    // ==========================================
-    // GUI MULTI-PAGE SYSTEM
-    // ==========================================
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        if (playerPossessions.containsKey(player.getUniqueId())) {
+            BotSession bot = botRegistry.get(playerPossessions.get(player.getUniqueId()));
+            if (bot != null && bot.getEntity() != null) {
+                bot.getEntity().teleport(player.getLocation());
+            }
+        }
+    }
 
-    // Page 1: Main Menu (Tombol List & Page 2 berada di sini)
     private void openPage1(Player player) {
         Inventory gui = Bukkit.createInventory(null, 27, GUI_PAGE_1);
+        gui.setItem(11, createCustomHead("Steve", ChatColor.GREEN + "➡️ Go to Page 2 (Create & Manage)", null));
         
-        // Button Mengarah ke Page 2 (Create & Manage)
-        gui.setItem(11, createCustomHead("Steve", ChatColor.GREEN + "➡️ Go to Page 2 (Create & Manage)", 
-                Arrays.asList(ChatColor.GRAY + "Atur pembuatan bot, skin,", ChatColor.GRAY + "nametag, dan gradient warna.")));
-        
-        // Button List Bot Langsung di Page 1 (Mudah diakses)
-        gui.setItem(15, createCustomHead("MHF_TNTServer", ChatColor.GOLD + "📋 Open Bot List Page", 
-                Arrays.asList(ChatColor.GRAY + "Melihat seluruh bot yang terdaftar", ChatColor.GRAY + "dan langsung spawn ke game.")));
-        
+        if (getConfig().getBoolean("features.possess-mode.enabled", true)) {
+            gui.setItem(13, createCustomHead("MHF_EnderDragon", ChatColor.LIGHT_PURPLE + "🔮 Possess / Control Bot", null));
+        }
+
+        gui.setItem(15, createCustomHead("MHF_TNTServer", ChatColor.GOLD + "📋 Open Bot List Page", null));
         player.openInventory(gui);
     }
 
-    // Page 2: Create & Manage Menu
     private void openPage2(Player player) {
         Inventory gui = Bukkit.createInventory(null, 27, GUI_PAGE_2);
-
-        // Button Create Bot (Registrasi ke list)
-        gui.setItem(11, createCustomHead("MHF_Chest", ChatColor.AQUA + "➕ Create Bot (Register to List)", 
-                Arrays.asList(ChatColor.GRAY + "Menambah bot baru ke dalam list registry.")));
-
-        // Button Nametag
-        gui.setItem(12, createCustomHead("MHF_Question", ChatColor.YELLOW + "🏷️ Set Nametag", 
-                Arrays.asList(ChatColor.GRAY + "Atur teks nametag bot.")));
-
-        // Button Gradient (Pisah Warna)
-        gui.setItem(13, createCustomHead("MHF_Villager", ChatColor.LIGHT_PURPLE + "🌈 Set Gradient Color", 
-                Arrays.asList(ChatColor.GRAY + "Atur warna/gradient khusus nametag.")));
-
-        // Button Skin
-        gui.setItem(14, createCustomHead("Alex", ChatColor.GREEN + "🎨 Set Skin URL / Owner", 
-                Arrays.asList(ChatColor.GRAY + "Ganti skin bot sesuai Head/URL.")));
-
-        // Button Kembali ke Page 1
+        gui.setItem(10, createCustomHead("MHF_Chest", ChatColor.AQUA + "➕ Create Bot", null));
+        gui.setItem(12, createCustomHead("Alex", ChatColor.GREEN + "🎨 Change Skin URL", null));
+        gui.setItem(14, createCustomHead("MHF_Question", ChatColor.YELLOW + "🏷️ Change Nametag", null));
+        gui.setItem(16, createCustomHead("MHF_Villager", ChatColor.LIGHT_PURPLE + "🌈 Change Gradient", null));
+        gui.setItem(22, createCustomHead("MHF_Redstone", ChatColor.RED + "🔄 Reload Config (Hosting)", 
+                Arrays.asList(ChatColor.GRAY + "Reload config.yml & Fitur Master")));
         gui.setItem(18, createCustomHead("MHF_ArrowLeft", ChatColor.RED + "⬅️ Back to Page 1", null));
-
         player.openInventory(gui);
     }
 
-    // Page List: Halaman Berisi Seluruh Bot
     private void openListPage(Player player) {
         Inventory gui = Bukkit.createInventory(null, 54, GUI_PAGE_LIST);
-
         int slot = 0;
         for (BotSession bot : botRegistry.values()) {
             if (slot >= 45) break;
-            List<String> lore = new ArrayList<>();
-            lore.add(ChatColor.GRAY + "Status: " + (bot.isSpawned() ? ChatColor.GREEN + "Spawned" : ChatColor.RED + "In List (Unspawned)"));
-            lore.add(ChatColor.YELLOW + "Klik untuk Spawn / Teleport Bot ini!");
-            
-            gui.setItem(slot, createCustomHead(bot.getSkinOwner(), bot.getFormattedNametag(), lore));
+            List<String> lore = Arrays.asList(ChatColor.GRAY + "Aktivitas: " + bot.getCurrentActivity().getDisplayName(), ChatColor.YELLOW + "Klik untuk Spawn!");
+            gui.setItem(slot, createCustomHead(bot.getName(), bot.getFormattedNametag(getConfig()), lore));
             slot++;
         }
-
-        // Button Kembali ke Page 1
         gui.setItem(49, createCustomHead("MHF_ArrowLeft", ChatColor.RED + "⬅️ Back to Page 1", null));
+        player.openInventory(gui);
+    }
 
+    private void openPossessSelectGUI(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 54, GUI_POSSESS_SELECT);
+        int slot = 0;
+        for (BotSession bot : botRegistry.values()) {
+            if (slot >= 45) break;
+            if (bot.isSpawned()) {
+                gui.setItem(slot, createCustomHead(bot.getName(), ChatColor.LIGHT_PURPLE + "🔮 Possess " + bot.getName(), null));
+                slot++;
+            }
+        }
+        gui.setItem(49, createCustomHead("MHF_ArrowLeft", ChatColor.RED + "⬅️ Back to Page 1", null));
+        player.openInventory(gui);
+    }
+
+    private void openSkinSelectGUI(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 54, GUI_SELECT_SKIN);
+        int slot = 0;
+        for (BotSession bot : botRegistry.values()) {
+            if (slot >= 45) break;
+            gui.setItem(slot, createCustomHead(bot.getName(), ChatColor.GREEN + bot.getName(), null));
+            slot++;
+        }
+        gui.setItem(49, createCustomHead("MHF_ArrowLeft", ChatColor.RED + "⬅️ Back to Page 2", null));
         player.openInventory(gui);
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         String title = event.getView().getTitle();
-        if (!title.equals(GUI_PAGE_1) && !title.equals(GUI_PAGE_2) && !title.equals(GUI_PAGE_LIST)) return;
+        if (!title.equals(GUI_PAGE_1) && !title.equals(GUI_PAGE_2) && !title.equals(GUI_PAGE_LIST) && !title.equals(GUI_POSSESS_SELECT) && !title.equals(GUI_SELECT_SKIN)) return;
 
         event.setCancelled(true);
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
         int slot = event.getRawSlot();
 
-        // Navigasi Page 1
         if (title.equals(GUI_PAGE_1)) {
             if (slot == 11) openPage2(player);
+            else if (slot == 13 && getConfig().getBoolean("features.possess-mode.enabled", true)) openPossessSelectGUI(player);
             else if (slot == 15) openListPage(player);
-        }
-        // Navigasi Page 2
-        else if (title.equals(GUI_PAGE_2)) {
-            if (slot == 11) {
-                player.sendMessage(ChatColor.YELLOW + "Gunakan: /botcreate <nama_bot> untuk mendaftar bot baru ke list!");
+        } else if (title.equals(GUI_PAGE_2)) {
+            if (slot == 10) { player.sendMessage(ChatColor.YELLOW + "Ketik: /botcreate <nama_bot>"); player.closeInventory(); }
+            else if (slot == 12) openSkinSelectGUI(player);
+            else if (slot == 22) {
+                reloadConfig();
+                player.sendMessage(ChatColor.GREEN + "✔ All features & config successfully reloaded!");
+                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
                 player.closeInventory();
-            } else if (slot == 12) {
-                player.sendMessage(ChatColor.YELLOW + "Gunakan: /nametag <nama_bot> <teks> untuk ubah nametag!");
-                player.closeInventory();
-            } else if (slot == 13) {
-                player.sendMessage(ChatColor.YELLOW + "Gunakan: /botgradient <nama_bot> <kode_warna> untuk atur gradient!");
-                player.closeInventory();
-            } else if (slot == 14) {
-                player.sendMessage(ChatColor.YELLOW + "Gunakan: /botskin <nama_bot> <nama_skin> untuk ganti skin!");
-                player.closeInventory();
-            } else if (slot == 18) {
-                openPage1(player);
-            }
-        }
-        // Navigasi Page List Bot
-        else if (title.equals(GUI_PAGE_LIST)) {
-            if (slot == 49) {
-                openPage1(player);
-            } else if (event.getCurrentItem() != null && event.getCurrentItem().hasItemMeta()) {
-                String botDisplayName = ChatColor.stripColor(event.getCurrentItem().getItemMeta().getDisplayName());
+            } else if (slot == 18) openPage1(player);
+        } else if (title.equals(GUI_PAGE_LIST)) {
+            if (slot == 49) openPage1(player);
+            else if (event.getCurrentItem() != null && event.getCurrentItem().hasItemMeta()) {
+                String botName = ChatColor.stripColor(event.getCurrentItem().getItemMeta().getDisplayName());
                 for (BotSession bot : botRegistry.values()) {
-                    if (ChatColor.stripColor(bot.getFormattedNametag()).equalsIgnoreCase(botDisplayName)) {
+                    if (ChatColor.stripColor(bot.getFormattedNametag(getConfig())).equalsIgnoreCase(botName)) {
                         spawnBotFromList(bot.getName(), player.getLocation());
-                        player.sendMessage(ChatColor.GREEN + "🚀 Bot '" + bot.getName() + "' di-spawn via List GUI!");
+                        player.sendMessage(ChatColor.GREEN + "🚀 Bot '" + bot.getName() + "' di-spawn!");
                         player.closeInventory();
                         break;
                     }
                 }
             }
-        }
-    }
-
-    private ItemStack createCustomHead(String owner, String displayName, List<String> lore) {
-        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-        SkullMeta meta = (SkullMeta) head.getItemMeta();
-        if (meta != null) {
-            meta.setOwningPlayer(Bukkit.getOfflinePlayer(owner));
-            meta.setDisplayName(displayName);
-            if (lore != null) meta.setLore(lore);
-            head.setItemMeta(meta);
-        }
-        return head;
-    }
-
-    private void spawnBotFromList(String name, Location loc) {
-        BotSession session = botRegistry.get(name);
-        if (session == null) return;
-
-        if (session.getEntity() != null) session.getEntity().remove();
-
-        ArmorStand stand = (ArmorStand) loc.getWorld().spawnEntity(loc, EntityType.ARMOR_STAND);
-        stand.setCustomName(session.getFormattedNametag());
-        stand.setCustomNameVisible(true);
-        stand.setArms(true);
-        stand.setBasePlate(false);
-        stand.setGravity(true);
-        
-        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-        SkullMeta meta = (SkullMeta) head.getItemMeta();
-        if (meta != null) {
-            meta.setOwningPlayer(Bukkit.getOfflinePlayer(session.getSkinOwner()));
-            head.setItemMeta(meta);
-        }
-        stand.getEquipment().setHelmet(head);
-        stand.getEquipment().setItemInMainHand(new ItemStack(Material.NETHERITE_SWORD));
-
-        session.setEntity(stand);
-        session.setLocation(loc);
-        session.setSpawned(true);
-    }
-
-    private void startHumanoidAnimationTask() {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                for (BotSession bot : botRegistry.values()) {
-                    if (!bot.isSpawned() || bot.getEntity() == null) continue;
-                    ArmorStand entity = bot.getEntity();
-                    Location loc = entity.getLocation();
-
-                    Player target = null;
-                    double minDist = 10.0;
-                    for (Entity nearby : loc.getWorld().getNearbyEntities(loc, 10, 10, 10)) {
-                        if (nearby instanceof Player) {
-                            double d = loc.distance(nearby.getLocation());
-                            if (d < minDist) { minDist = d; target = (Player) nearby; }
-                        }
-                    }
-
-                    int tick = bot.getAnimTick() + 1;
-                    bot.setAnimTick(tick);
-
-                    double armSwing = Math.sin(tick * 0.4) * 0.6;
-                    double legSwing = Math.cos(tick * 0.4) * 0.6;
-
-                    entity.setLeftArmPose(new EulerAngle(armSwing, 0, 0));
-                    entity.setRightArmPose(new EulerAngle(-armSwing, 0, 0));
-                    entity.setLeftLegPose(new EulerAngle(-legSwing, 0, 0));
-                    entity.setRightLegPose(new EulerAngle(legSwing, 0, 0));
-
-                    if (target != null) {
-                        Vector dir = target.getLocation().toVector().subtract(loc.toVector()).normalize();
-                        loc.setDirection(dir);
-
-                        if (minDist > 2.0) {
-                            loc.add(dir.multiply(0.35));
-                            entity.teleport(loc);
-                        } else {
-                            entity.setRightArmPose(new EulerAngle(-1.2, 0, 0));
-                            target.damage(4.5, entity);
-                            target.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 0.5f, 1.0f);
-                        }
-                    } else {
-                        if (tick % 20 == 0) {
-                            double rx = (Math.random() - 0.5) * 2.0;
-                            double rz = (Math.random() - 0.5) * 2.0;
-                            bot.setMoveVector(new Vector(rx * 0.15, 0, rz * 0.15));
-                        }
-                        Vector move = bot.getMoveVector();
-                        if (move.lengthSquared() > 0) {
-                            loc.add(move);
-                            entity.teleport(loc);
-                        }
-                    }
-                }
-            }
-        }.runTaskTimer(this, 2L, 2L);
-    }
-                                             }
-            
+        } else if (title.equals(GUI_POS
