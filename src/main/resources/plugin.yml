@@ -3,7 +3,7 @@ version: 1.3.0
 main: com.danzzreal.danzzbot.DanzzBot
 api-version: '1.21'
 author: DanzzReal
-description: Ultimate Professional Fake Player AI with Direct GUI Toggles and MineSkin Support.
+description: Ultimate Professional Fake Player AI with Custom GUI Head URLs via Config.
 commands:
   botgui:
     permission: danzzbot.admin
@@ -31,4 +31,3 @@ commands:
     permission: danzzbot.admin
   botgradient:
     permission: danzzbot.admin
-    
