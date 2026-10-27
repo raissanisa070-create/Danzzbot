@@ -59,7 +59,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
         private String nametag;
         private String gradientColor;
         private String skinUrl;
-        private String modelType; // "wide" atau "slim"
+        private String modelType;
         private Location location;
         private ArmorStand entity;
         private boolean spawned = false;
@@ -434,5 +434,5 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
     private void openPage2(Player player) {
         Inventory gui = Bukkit.createInventory(null, 36, GUI_PAGE_2);
 
-        gui.setItem(10, createConfigHead("gui-heads.create-bot", ChatColor.AQUA + "➕ Create Bot", null)
-                    
+        gui.setItem(10, createConfigHead("gui-heads.create-bot", ChatColor.AQUA + "➕ Create Bot", null));
+        gui.setItem
