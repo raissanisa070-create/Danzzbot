@@ -3,39 +3,32 @@ version: 1.3.0
 main: com.danzzreal.danzzbot.DanzzBot
 api-version: '1.21'
 author: DanzzReal
-description: Advanced Fake Player AI dengan Reload Config, Health Indicator, Totem Pop, Mace AOE, & Mode Possess.
+description: Ultimate Professional Fake Player AI with Direct GUI Toggles and MineSkin Support.
 commands:
   botgui:
-    description: Buka menu GUI DanzzBot
     permission: danzzbot.admin
   botreload:
-    description: Reload konfigurasi config.yml dari hosting
     permission: danzzbot.admin
   botcreate:
-    description: Tambah bot ke daftar list
     permission: danzzbot.admin
   botspawn:
-    description: Spawn bot dari list ke dunia
     permission: danzzbot.admin
   botpossess:
-    description: Rasuki/kontrol bot
     permission: danzzbot.admin
   botunpossess:
-    description: Keluar dari mode rasuk bot
     permission: danzzbot.admin
   botchat:
-    description: Kirim pesan chat gaul atas nama bot
     permission: danzzbot.admin
-  botrename:
-    description: Ganti nama bot
+  botkill:
+    permission: danzzbot.admin
+  botitem:
+    permission: danzzbot.admin
+  botinv:
     permission: danzzbot.admin
   botskin:
-    description: Atur skin URL bot
     permission: danzzbot.admin
   nametag:
-    description: Atur nametag bot
     permission: danzzbot.admin
   botgradient:
-    description: Atur warna gradient nametag terpisah
     permission: danzzbot.admin
     
