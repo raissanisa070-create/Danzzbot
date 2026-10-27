@@ -410,4 +410,159 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) head.getItemMeta();
         if (meta != null) {
-           
+            meta.setDisplayName(name);
+            if (lore != null) meta.setLore(lore);
+            head.setItemMeta(meta);
+        }
+        loadSkin(head, url);
+        return head;
+    }
+
+    private void loadSkin(ItemStack head, String url) {
+        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+            try {
+                String api = url.contains("api.mineskin.org") ? url : "https://api.mineskin.org/get/id/" + url.substring(url.lastIndexOf('/') + 1);
+                HttpURLConnection conn = (HttpURLConnection) new URL(api).openConnection();
+                conn.setRequestMethod("GET");
+                BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line);
+                r.close();
+                String res = sb.toString();
+                String val = getJsonVal(res, "value");
+                String sig = getJsonVal(res, "signature");
+                if (val != null && sig != null) {
+                    Bukkit.getScheduler().runTask(this, () -> {
+                        SkullMeta meta = (SkullMeta) head.getItemMeta();
+                        if (meta != null) {
+                            PlayerProfile prof = Bukkit.createProfile(UUID.randomUUID());
+                            prof.setProperty(new Property("textures", val, sig));
+                            meta.setPlayerProfile(prof);
+                            head.setItemMeta(meta);
+                        }
+                    });
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
+    private void loadStandSkin(ArmorStand stand, String name, String url) {
+        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+            try {
+                String api = url.contains("api.mineskin.org") ? url : "https://api.mineskin.org/get/id/" + url.substring(url.lastIndexOf('/') + 1);
+                HttpURLConnection conn = (HttpURLConnection) new URL(api).openConnection();
+                conn.setRequestMethod("GET");
+                BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line);
+                r.close();
+                String res = sb.toString();
+                String val = getJsonVal(res, "value");
+                String sig = getJsonVal(res, "signature");
+                if (val != null && sig != null) {
+                    Bukkit.getScheduler().runTask(this, () -> {
+                        PlayerProfile prof = Bukkit.createProfile(UUID.randomUUID(), name);
+                        prof.setProperty(new Property("textures", val, sig));
+                        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+                        SkullMeta meta = (SkullMeta) head.getItemMeta();
+                        if (meta != null) {
+                            meta.setPlayerProfile(prof);
+                            head.setItemMeta(meta);
+                        }
+                        stand.getEquipment().setHelmet(head);
+                    });
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
+    private String getJsonVal(String json, String key) {
+        try {
+            int idx = json.indexOf("\"" + key + "\"");
+            if (idx == -1) return null;
+            int start = json.indexOf("\"", idx + key.length() + 2) + 1;
+            int end = json.indexOf("\"", start);
+            return json.substring(start, end);
+        } catch (Exception e) { return null; }
+    }
+
+    private void spawnBot(String name, Location loc) {
+        BotSession b = botRegistry.get(name);
+        if (b == null) return;
+        if (b.getEntity() != null) b.getEntity().remove();
+
+        ArmorStand stand = (ArmorStand) loc.getWorld().spawnEntity(loc, EntityType.ARMOR_STAND);
+        stand.setCustomName(b.getFormattedNametag(getConfig()));
+        stand.setCustomNameVisible(true);
+        stand.setArms(true);
+        stand.setBasePlate(false);
+        stand.setGravity(true);
+        b.setHealth(getConfig().getDouble("settings.default-health", 20.0));
+
+        loadStandSkin(stand, name, b.getSkinUrl());
+        stand.getEquipment().setItemInMainHand(new ItemStack(Material.MACE));
+
+        b.setEntity(stand);
+        b.setLocation(loc);
+        b.setSpawned(true);
+        Bukkit.broadcastMessage(ChatColor.YELLOW + b.getName() + " joined the game");
+    }
+
+    private void startEngine() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                FileConfiguration cfg = getConfig();
+                boolean pvp = cfg.getBoolean("features.bot-pvp-attack.enabled", true);
+                double pvpDmg = cfg.getDouble("settings.pvp-damage", 9.0);
+                double range = cfg.getDouble("settings.detection-range", 16.0);
+
+                for (BotSession b : botRegistry.values()) {
+                    if (!b.isSpawned() || b.getEntity() == null || b.isPossessed()) continue;
+                    ArmorStand ent = b.getEntity();
+                    Location loc = ent.getLocation();
+                    ent.setCustomName(b.getFormattedNametag(cfg));
+
+                    if (b.getAttackCooldown() > 0) b.setAttackCooldown(b.getAttackCooldown() - 1);
+
+                    Player target = null;
+                    for (Entity n : loc.getWorld().getNearbyEntities(loc, range, range, range)) {
+                        if (n instanceof Player && !playerPossessions.containsKey(n.getUniqueId())) {
+                            target = (Player) n;
+                            break;
+                        }
+                    }
+
+                    int tick = b.getAnimTick() + 1;
+                    b.setAnimTick(tick);
+                    double armS = Math.sin(tick * 0.5) * 0.75;
+                    ent.setLeftArmPose(new EulerAngle(armS, 0, 0));
+                    ent.setRightArmPose(new EulerAngle(-armS, 0, 0));
+
+                    if (target != null && pvp) {
+                        Vector dir = target.getLocation().toVector().subtract(loc.toVector()).normalize();
+                        loc.setDirection(dir);
+                        if (loc.distance(target.getLocation()) > 2.0) {
+                            loc.add(dir.multiply(0.42));
+                            ent.teleport(loc);
+                        } else if (b.getAttackCooldown() == 0) {
+                            target.damage(pvpDmg, ent);
+                            b.setAttackCooldown(10);
+                        }
+                    } else {
+                        if (tick % 25 == 0) {
+                            b.setMoveVector(new Vector((Math.random() - 0.5) * 0.4, 0, (Math.random() - 0.5) * 0.4));
+                        }
+                        Vector move = b.getMoveVector();
+                        if (move.lengthSquared() > 0) {
+                            loc.add(move);
+                            ent.teleport(loc);
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(this, 2L, 2L);
+    }
+}
