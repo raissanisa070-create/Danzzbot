@@ -1,49 +1,48 @@
 # ==========================================
-# DanzzBot v1.3.0 - Danzz Ganteng Config File
+# DanzzBot v1.3.0 - Ultimate Master Config File
 # ==========================================
 
-# 1. Pengaturan Dasar Atribut Bot
 settings:
   default-health: 20.0
-  pvp-damage: 7.5
-  detection-range: 14.0
+  pvp-damage: 9.0
+  detection-range: 16.0
 
-# 2. Toggle Fitur On / Off (Bisa diatur sesuka hati)
+# Pengaturan On/Off Seluruh Fitur Modern Secara Real-time
 features:
-  # Health Indicator pada Nametag Bot
   health-indicator:
-    enabled: true                  # true = On, false = Off
-    high-health-text: " [❤❤❤❤❤]"   # Format saat HP penuh
-    low-health-text: " [❤❤]"       # Format saat HP sekarat
+    enabled: true
+    high-health-text: " [❤❤❤❤❤]"
+    low-health-text: " [❤❤]"
 
-  # Sistem Chat Otomatis Bahasa Gaul
   auto-chat:
-    enabled: true                  # true = On, false = Off
-    interval-ticks: 300            # Interval waktu chat (300 tick = ~15 detik)
+    enabled: true
+    interval-ticks: 300
 
-  # Mode Possess / Rasuk Kontrol Bot
   possess-mode:
-    enabled: true                  # true = On, false = Off
+    enabled: true
 
-  # Fitur Efek Combat Modern
   combat-effects:
-    enable-totem-pop: true        # Fitur efek Totem Pop saat HP kritis
-    enable-mace-aoe-smash: true   # Fitur Guncangan Smash AOE & Blast Mace
+    enable-totem-pop: true
+    enable-mace-aoe-smash: true
 
-  # Siklus Aktivitas AI Mandiri (Mining, Woodcutting, Exploring)
+  # Fitur Bot Menyerang / PvP Player di Sekitar
+  bot-pvp-attack:
+    enabled: true
+
+  # Fitur Auto-Kill Player Terdekat (Bot langsung melenyapkan target dalam jangkauan)
+  auto-kill-nearest-player:
+    enabled: false                 # Ubah ke true jika ingin bot auto-kill player sekitar secara otomatis
+
   ai-activities:
-    enabled: true                  # true = On, false = Off
+    enabled: true
 
-# 3. Daftar Pesan Bahasa Gaul Otomatis
 gaul-messages:
-  - "wkwk parah banget dah ini server"
+  - "wkwk parah banget bot semua"
   - "ada yang mau pvp ga bro?"
   - "gas CPVP Mace santai!"
   - "lagi nambang dulu ntar baru pvp ya"
   - "mace smash taste nice bro wkwk"
-  - "anjay keren amat skinnya"
-  - "bentar lagi kumpulin kayu nih"
-  - "bro bagi makan dong laper wkwk"
-  - "spotted player, siap-siap pvp!"
-  - "halo salam kenal semuanya"
-  
+  - "info lawan keras bos"
+  - "ayo pvp , ga mau? skill isue"
+  - "gabut wok enaknya ngapain yak"
+  - "bowo itu ga rispek loh , bowo gndt"
