@@ -2,10 +2,6 @@ package com.danzzreal.danzzbot;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.Property;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -146,6 +142,12 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
     public void onEnable() {
         saveDefaultConfig();
 
+        // Teks Banner Keren saat Plugin Dimuat / Restart
+        List<String> restartMsgs = getConfig().getStringList("restart-messages");
+        for (String msg : restartMsgs) {
+            Bukkit.getConsoleSender().sendMessage(ChatColor.translateAlternateColorCodes('&', "&b[DanzzBot] &f" + msg));
+        }
+
         String[] cmds = {"botgui", "botreload", "botcreate", "botspawn", "botpossess", "botunpossess", "botchat", "botkill", "botitem", "botinv", "botskin", "nametag", "botgradient"};
         for (String cmd : cmds) {
             if (getCommand(cmd) != null) {
@@ -184,7 +186,6 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
         int realPlayers = Bukkit.getOnlinePlayers().size();
         int spawnedBots = 0;
         List<PlayerProfile> profiles = new ArrayList<>();
-
         for (BotSession bot : botRegistry.values()) {
             if (bot.isSpawned()) {
                 spawnedBots++;
@@ -192,7 +193,6 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
                 profiles.add(profile);
             }
         }
-
         event.setNumPlayers(realPlayers + spawnedBots);
         for (PlayerProfile profile : profiles) {
             event.getPlayerSample().add(profile);
@@ -203,7 +203,6 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> suggestions = new ArrayList<>();
         String cmd = command.getName().toLowerCase();
-
         if (cmd.equals("botskin")) {
             if (args.length == 1) suggestions.add("url");
             else if (args.length == 2 && args[0].equalsIgnoreCase("url")) suggestions.addAll(botRegistry.keySet());
@@ -212,9 +211,6 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
         } else if (cmd.equals("botkill")) {
             if (args.length == 1) suggestions.addAll(botRegistry.keySet());
             else if (args.length == 2) { suggestions.add("kill"); suggestions.add("remove"); }
-            else if (args.length == 3) {
-                for (Player p : Bukkit.getOnlinePlayers()) suggestions.add(p.getName());
-            }
         } else if (cmd.equals("botitem") || cmd.equals("botinv")) {
             if (args.length == 1) suggestions.addAll(botRegistry.keySet());
             else if (args.length == 2 && cmd.equals("botitem")) { suggestions.add("sword"); suggestions.add("pickaxe"); suggestions.add("armor"); }
@@ -234,14 +230,11 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             openPage1(player);
             return true;
         }
-
         if (cmd.equals("botreload")) {
             reloadConfig();
             player.sendMessage(ChatColor.GREEN + "✔ Konfigurasi DanzzBot berhasil di-reload!");
-            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
             return true;
         }
-
         if (cmd.equals("botcreate")) {
             if (args.length < 1) {
                 player.sendMessage(ChatColor.YELLOW + "Penggunaan: /botcreate <nama_bot>");
@@ -254,19 +247,16 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             }
             String defaultUrl = getConfig().getString("default-skin.url", "https://minesk.in/b99aa1f02594468c95307736628af54a");
             String defaultModel = getConfig().getString("default-skin.model", "wide");
-            
             botRegistry.put(name, new BotSession(name, defaultUrl, defaultModel));
-            player.sendMessage(ChatColor.GREEN + "✔ Bot '" + name + "' (" + defaultModel.toUpperCase() + ") berhasil dibuat!");
+            player.sendMessage(ChatColor.GREEN + "✔ Bot '" + name + "' berhasil dibuat!");
             return true;
         }
-
         if (cmd.equals("botspawn")) {
             if (args.length < 1) return true;
             spawnBotFromList(args[0], player.getLocation());
             player.sendMessage(ChatColor.GREEN + "🚀 Bot Manusia '" + args[0] + "' di-spawn!");
             return true;
         }
-
         if (cmd.equals("botinv")) {
             if (args.length < 1) {
                 openBotInventorySelectGUI(player);
@@ -274,68 +264,38 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
             }
             BotSession bot = botRegistry.get(args[0]);
             if (bot != null) openBotInventory(player, bot);
-            else player.sendMessage(ChatColor.RED + "Bot tidak ditemukan!");
             return true;
         }
-
         if (cmd.equals("botkill")) {
-            if (args.length < 2) {
-                player.sendMessage(ChatColor.YELLOW + "Penggunaan: /botkill <nama_bot> [kill|remove] [target]");
-                return true;
-            }
+            if (args.length < 1) return true;
             BotSession bot = botRegistry.get(args[0]);
-            if (bot == null) {
-                player.sendMessage(ChatColor.RED + "Bot tidak ditemukan!");
-                return true;
-            }
-
+            if (bot == null) return true;
             if (args.length >= 2 && args[1].equalsIgnoreCase("remove")) {
                 removeBotAndAnnounce(bot, "left the game");
-                player.sendMessage(ChatColor.GREEN + "✔ Bot dihapus dari dunia.");
-                return true;
-            }
-
-            if (args.length >= 3 && args[1].equalsIgnoreCase("kill")) {
-                Player target = Bukkit.getPlayer(args[2]);
-                if (target != null) {
-                    bot.setTargetPlayerUUID(target.getUniqueId());
-                    player.sendMessage(ChatColor.RED + "⚔ Bot '" + bot.getName() + "' memburu " + target.getName() + "!");
-                }
+                player.sendMessage(ChatColor.GREEN + "✔ Bot dihapus.");
             } else {
-                String deathMsg = ChatColor.YELLOW + bot.getName() + " died";
-                Bukkit.broadcastMessage(deathMsg);
+                Bukkit.broadcastMessage(ChatColor.YELLOW + bot.getName() + " died");
                 removeBotAndAnnounce(bot, "left the game");
             }
             return true;
         }
-
         if (cmd.equals("botitem")) {
-            if (args.length < 2) {
-                player.sendMessage(ChatColor.YELLOW + "Penggunaan: /botitem <nama_bot> <sword|pickaxe|armor>");
-                return true;
-            }
+            if (args.length < 2) return true;
             BotSession bot = botRegistry.get(args[0]);
             if (bot != null && bot.getEntity() != null) {
-                String action = args[1].toLowerCase();
-                if (action.equals("sword")) {
+                if (args[1].equalsIgnoreCase("sword")) {
                     bot.getEntity().getEquipment().setItemInMainHand(player.getInventory().getItemInMainHand());
-                    player.sendMessage(ChatColor.GREEN + "🗡️ Senjata bot diperbarui!");
-                } else if (action.equals("armor")) {
+                } else if (args[1].equalsIgnoreCase("armor")) {
                     bot.getEntity().getEquipment().setHelmet(player.getInventory().getHelmet());
                     bot.getEntity().getEquipment().setChestplate(player.getInventory().getChestplate());
                     bot.getEntity().getEquipment().setLeggings(player.getInventory().getLeggings());
                     bot.getEntity().getEquipment().setBoots(player.getInventory().getBoots());
-                    player.sendMessage(ChatColor.GREEN + "🛡️ Armor bot diperbarui!");
                 }
             }
             return true;
         }
-
         if (cmd.equals("botpossess")) {
-            if (!getConfig().getBoolean("features.possess-mode.enabled", true)) {
-                player.sendMessage(ChatColor.RED + "Mode Possess dimatikan di config.yml!");
-                return true;
-            }
+            if (!getConfig().getBoolean("features.possess-mode.enabled", true)) return true;
             if (args.length < 1) {
                 openPossessSelectGUI(player);
                 return true;
@@ -345,63 +305,48 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
                 bot.setPossessed(true);
                 playerPossessions.put(player.getUniqueId(), args[0]);
                 player.teleport(bot.getLocation());
-                player.sendMessage(ChatColor.LIGHT_PURPLE + "🔮 Mengendalikan bot '" + bot.getName() + "'!");
             }
             return true;
         }
-
         if (cmd.equals("botunpossess")) {
             String botName = playerPossessions.remove(player.getUniqueId());
             if (botName != null && botRegistry.containsKey(botName)) {
                 botRegistry.get(botName).setPossessed(false);
             }
-            player.sendMessage(ChatColor.GREEN + "🔮 Keluar dari mode rasuk bot.");
+            player.sendMessage(ChatColor.GREEN + "🔮 Keluar dari mode rasuk.");
             return true;
         }
-
         if (cmd.equals("botskin")) {
             if (args.length >= 4 && args[0].equalsIgnoreCase("url")) {
-                String botName = args[1];
-                String skinUrl = args[2];
-                String model = args[3].toLowerCase();
-
-                BotSession bot = botRegistry.get(botName);
+                BotSession bot = botRegistry.get(args[1]);
                 if (bot != null) {
-                    bot.setSkinUrl(skinUrl);
-                    bot.setModelType(model);
-                    player.sendMessage(ChatColor.GREEN + "🎨 MineSkin URL & Model (" + bot.getModelType().toUpperCase() + ") dipasang untuk " + botName + "!");
+                    bot.setSkinUrl(args[2]);
+                    bot.setModelType(args[3]);
+                    player.sendMessage(ChatColor.GREEN + "🎨 Skin diperbarui untuk " + args[1]);
                 }
                 return true;
             }
             openSkinSelectGUI(player);
             return true;
         }
-
-        if (cmd.equals("nametag")) {
-            if (args.length >= 2) {
-                BotSession bot = botRegistry.get(args[0]);
-                if (bot != null) {
-                    StringBuilder tag = new StringBuilder();
-                    for (int i = 1; i < args.length; i++) tag.append(args[i]).append(" ");
-                    bot.setNametag(tag.toString().trim());
-                    if (bot.getEntity() != null) bot.getEntity().setCustomName(bot.getFormattedNametag(getConfig()));
-                    player.sendMessage(ChatColor.GREEN + "🏷️ Nametag diperbarui!");
-                }
-                return true;
+        if (cmd.equals("nametag") && args.length >= 2) {
+            BotSession bot = botRegistry.get(args[0]);
+            if (bot != null) {
+                StringBuilder tag = new StringBuilder();
+                for (int i = 1; i < args.length; i++) tag.append(args[i]).append(" ");
+                bot.setNametag(tag.toString().trim());
+                if (bot.getEntity() != null) bot.getEntity().setCustomName(bot.getFormattedNametag(getConfig()));
             }
+            return true;
         }
-
-        if (cmd.equals("botgradient")) {
-            if (args.length < 2) return true;
+        if (cmd.equals("botgradient") && args.length >= 2) {
             BotSession bot = botRegistry.get(args[0]);
             if (bot != null) {
                 bot.setGradientColor(args[1]);
                 if (bot.getEntity() != null) bot.getEntity().setCustomName(bot.getFormattedNametag(getConfig()));
-                player.sendMessage(ChatColor.GREEN + "🌈 Gradient diperbarui!");
             }
             return true;
         }
-
         return false;
     }
 
@@ -416,13 +361,8 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
         }
     }
 
-    // ==========================================
-    // GUI CONTROL PANEL & CONFIGURABLE HEADS
-    // ==========================================
-
     private void openPage1(Player player) {
         Inventory gui = Bukkit.createInventory(null, 27, GUI_PAGE_1);
-        
         gui.setItem(11, createConfigHead("gui-heads.page1-to-page2", ChatColor.GREEN + "➡️ Control Panel & Toggles (Page 2)", null));
         if (getConfig().getBoolean("features.possess-mode.enabled", true)) {
             gui.setItem(13, createConfigHead("gui-heads.possess-bot", ChatColor.LIGHT_PURPLE + "🔮 Possess / Control Bot", null));
@@ -433,6 +373,25 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCo
 
     private void openPage2(Player player) {
         Inventory gui = Bukkit.createInventory(null, 36, GUI_PAGE_2);
-
         gui.setItem(10, createConfigHead("gui-heads.create-bot", ChatColor.AQUA + "➕ Create Bot", null));
-        gui.setItem
+        gui.setItem(12, createConfigHead("gui-heads.change-skin", ChatColor.GREEN + "🎨 Configure MineSkin URL", null));
+        gui.setItem(14, createConfigHead("gui-heads.view-inventory", ChatColor.DARK_AQUA + "🎒 View Bot Inventory", null));
+        gui.setItem(16, createConfigHead("gui-heads.reload-config", ChatColor.RED + "🔄 Reload Config", null));
+
+        boolean pvpEnabled = getConfig().getBoolean("features.bot-pvp-attack.enabled", true);
+        gui.setItem(19, createConfigHead("gui-heads.toggle-pvp", (pvpEnabled ? ChatColor.GREEN + "⚔ PvP Attack: ON" : ChatColor.RED + "⚔ PvP Attack: OFF"), Arrays.asList(ChatColor.GRAY + "Klik untuk ON/OFF")));
+
+        boolean autoKillEnabled = getConfig().getBoolean("features.auto-kill-nearest-player.enabled", false);
+        gui.setItem(20, createConfigHead("gui-heads.toggle-autokill", (autoKillEnabled ? ChatColor.DARK_RED + "☠ Auto-Kill: ON" : ChatColor.GRAY + "☠ Auto-Kill: OFF"), Arrays.asList(ChatColor.GRAY + "Klik untuk ON/OFF")));
+
+        boolean autoChatEnabled = getConfig().getBoolean("features.auto-chat.enabled", true);
+        gui.setItem(21, createConfigHead("gui-heads.toggle-autochat", (autoChatEnabled ? ChatColor.GREEN + "💬 Auto Chat: ON" : ChatColor.RED + "💬 Auto Chat: OFF"), Arrays.asList(ChatColor.GRAY + "Klik untuk ON/OFF")));
+
+        boolean possessEnabled = getConfig().getBoolean("features.possess-mode.enabled", true);
+        gui.setItem(22, createConfigHead("gui-heads.toggle-possess", (possessEnabled ? ChatColor.GREEN + "🔮 Possess Mode: ON" : ChatColor.RED + "🔮 Possess Mode: OFF"), Arrays.asList(ChatColor.GRAY + "Klik untuk ON/OFF")));
+
+        boolean aiEnabled = getConfig().getBoolean("features.ai-activities.enabled", true);
+        gui.setItem(23, createConfigHead("gui-heads.toggle-ai", (aiEnabled ? ChatColor.GREEN + "⛏ AI Activities: ON" : ChatColor.RED + "⛏ AI Activities: OFF"), Arrays.asList(ChatColor.GRAY + "Klik untuk ON/OFF")));
+
+        boolean indicatorEnabled = getConfig().getBoolean("features.health-indicator.enabled", true);
+        gui.setItem(24, createConfigHead("gui-heads.toggle-health", (indicatorEnabled ? ChatColor.GREEN + "❤ Health Indicator: ON" : ChatColor.RED + "❤ Healt
