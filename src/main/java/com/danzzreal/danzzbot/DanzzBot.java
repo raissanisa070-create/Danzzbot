@@ -1,601 +1,752 @@
-package com.danzzreal.danzzbot;
+package com.danzz.danzzbot;
 
+import me.clip.placeholderapi.PlaceholderAPI;
+import me.clip.placeholderapi.expansion.PlaceholderExpansion;
+import net.citizensnpcs.api.CitizensAPI;
+import net.citizensnpcs.api.npc.NPC;
+import net.citizensnpcs.api.trait.trait.Equipment;
+import net.citizensnpcs.trait.SkinTrait;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.EndCrystal;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.server.ServerListPingEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.util.EulerAngle;
-import org.bukkit.util.Vector;
+import org.jetbrains.annotations.NotNull;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public final class DanzzBot extends JavaPlugin implements CommandExecutor, TabCompleter, Listener {
+public final class DanzzBot extends JavaPlugin implements CommandExecutor, Listener {
 
-    public enum BotActivity {
-        EXPLORING("Berkeliaran"), MINING("Mining"), BUILDING("Building"), PVP("PVP"), CPVP("Crystal PvP");
-        private final String name;
-        BotActivity(String name) { this.name = name; }
-        public String getDisplayName() { return name; }
-    }
+    private final Map<String, String> createdTemplates = new HashMap<>();
+    private final Map<UUID, NPC> controlledBots = new HashMap<>();
+    private final Map<UUID, ArmorStand> botHolograms = new HashMap<>();
+    private final Map<UUID, BossBar> botBossBars = new HashMap<>();
+    private final Random random = new Random();
+    
+    private File botsFile, menuFile;
+    private FileConfiguration botsConfig, menuConfig;
 
-    public static class BotSession {
-        private String name, nametag, gradientColor, skinUrl, modelType;
-        private Location location;
-        private ArmorStand entity;
-        private boolean spawned = false, possessed = false, cpvpMode = false;
-        private double health = 20.0;
-        private int animTick = 0, attackCooldown = 0, cpvpCooldown = 0;
-        private final ItemStack[] inventoryStorage = new ItemStack[27];
-        private BotActivity currentActivity = BotActivity.EXPLORING;
-        private Vector moveVector = new Vector(0, 0, 0);
-
-        public BotSession(String name, String skinUrl, String model) {
-            this.name = name;
-            this.nametag = name;
-            this.gradientColor = "&f";
-            this.skinUrl = skinUrl;
-            this.modelType = model.equalsIgnoreCase("slim") ? "slim" : "wide";
-            Arrays.fill(inventoryStorage, new ItemStack(Material.AIR));
-        }
-
-        public String getName() { return name; }
-        public String getNametag() { return nametag; }
-        public void setNametag(String n) { this.nametag = n; }
-        public String getGradientColor() { return gradientColor; }
-        public void setGradientColor(String g) { this.gradientColor = g; }
-        public String getSkinUrl() { return skinUrl; }
-        public void setSkinUrl(String s) { this.skinUrl = s; }
-        public String getModelType() { return modelType; }
-        public void setModelType(String m) { this.modelType = m.equalsIgnoreCase("slim") ? "slim" : "wide"; }
-        public Location getLocation() { return location; }
-        public void setLocation(Location l) { this.location = l; }
-        public ArmorStand getEntity() { return entity; }
-        public void setEntity(ArmorStand e) { this.entity = e; }
-        public boolean isSpawned() { return spawned; }
-        public void setSpawned(boolean s) { this.spawned = s; }
-        public boolean isPossessed() { return possessed; }
-        public void setPossessed(boolean p) { this.possessed = p; }
-        public boolean isCpvpMode() { return cpvpMode; }
-        public void setCpvpMode(boolean c) { this.cpvpMode = c; }
-        public double getHealth() { return health; }
-        public void setHealth(double h) { this.health = h; }
-        public int getAnimTick() { return animTick; }
-        public void setAnimTick(int a) { this.animTick = a; }
-        public int getAttackCooldown() { return attackCooldown; }
-        public void setAttackCooldown(int a) { this.attackCooldown = a; }
-        public int getCpvpCooldown() { return cpvpCooldown; }
-        public void setCpvpCooldown(int c) { this.cpvpCooldown = c; }
-        public ItemStack[] getInventoryStorage() { return inventoryStorage; }
-        
-        public void setInventoryStorage(ItemStack[] items) {
-            if (items != null) {
-                System.arraycopy(items, 0, this.inventoryStorage, 0, Math.min(items.length, this.inventoryStorage.length));
-            }
-        }
-
-        public BotActivity getCurrentActivity() { return currentActivity; }
-        public void setCurrentActivity(BotActivity a) { this.currentActivity = a; }
-        public Vector getMoveVector() { return moveVector; }
-        public void setMoveVector(Vector v) { this.moveVector = v; }
-
-        public String getFormattedNametag(FileConfiguration cfg) {
-            String base = ChatColor.translateAlternateColorCodes('&', gradientColor + nametag);
-            if (cfg.getBoolean("features.health-indicator.enabled", true)) {
-                String hearts = health > 10 ? ChatColor.GREEN + " [❤❤❤❤❤]" : ChatColor.RED + " [❤❤]";
-                return base + hearts;
-            }
-            return base;
-        }
-    }
-
-    private final Map<String, BotSession> botRegistry = new HashMap<>();
-    private final Map<UUID, String> playerPossessions = new HashMap<>();
-    private final Map<UUID, String> viewingBotInventory = new HashMap<>();
-
-    private final String GUI_P1 = ChatColor.DARK_PURPLE + "✦ DanzzBot | Main Menu (Page 1) ✦";
-    private final String GUI_P2 = ChatColor.GOLD + "✦ DanzzBot | Control Panel (Page 2) ✦";
-    private final String GUI_LIST = ChatColor.BLUE + "✦ DanzzBot | Bot Spawn List ✦";
-    private final String GUI_POSSESS = ChatColor.LIGHT_PURPLE + "✦ Select Bot to Possess ✦";
-    private final String GUI_SKIN = ChatColor.GREEN + "✦ Select Bot for Skin ✦";
-    private final String GUI_INV = ChatColor.DARK_AQUA + "✦ Select Bot Inventory ✦";
+    private static final Pattern HEX_PATTERN = Pattern.compile("&#([A-Fa-f0-9]{6})");
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
-        for (String msg : getConfig().getStringList("restart-messages")) {
-            Bukkit.getConsoleSender().sendMessage(ChatColor.translateAlternateColorCodes('&', "&b[DanzzBot] &f" + msg));
-        }
-        String[] cmds = {"botgui", "botreload", "botcreate", "botspawn", "botpossess", "botunpossess", "botchat", "botkill", "botitem", "botinv", "botskin", "nametag", "botgradient"};
-        for (String cmd : cmds) {
-            if (getCommand(cmd) != null) {
-                getCommand(cmd).setExecutor(this);
-                getCommand(cmd).setTabCompleter(this);
-            }
-        }
+        createBotsFile();
+        createMenuFile();
+        loadBotsFromStorage();
+
         getServer().getPluginManager().registerEvents(this, this);
-        startEngine();
-        getLogger().info("DanzzBot v1.3.0 Active!");
+        Objects.requireNonNull(getCommand("danzzbot")).setExecutor(this);
+
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new DanzzBotPlaceholderExpansion(this).register();
+            getLogger().info("PlaceholderAPI Enterprise Engine terhubung.");
+        }
+
+        startEnterpriseEngineTask();
+        printEnterpriseBanner();
     }
 
     @Override
     public void onDisable() {
-        for (BotSession bot : botRegistry.values()) {
-            if (bot.getEntity() != null) {
-                bot.getEntity().remove();
-                if (bot.isSpawned()) Bukkit.broadcastMessage(ChatColor.YELLOW + bot.getName() + " left the game");
+        removeAllHolograms();
+        removeAllBossBars();
+        saveBotsToStorage();
+        getLogger().info(colorize("&8[&b&lDanzzBot Enterprise&8] &cShutdown aman. Data tersimpan."));
+    }
+
+    private void printEnterpriseBanner() {
+        getLogger().info("==================================================================");
+        getLogger().info("  ___                  _     ____        _   _       _  ___  ");
+        getLogger().info(" |   \\ __ _ _ _ _____| |_  | r_ \\  ___ | |_(_)_ _ _(_)/ _ \\ ");
+        getLogger().info(" | |) / _` | '_|_ /_-<|  _| |   _/ / _ \\|  _| | '_| | | (_) |");
+        getLogger().info(" |___/\\__,_|_| /__/__/ \\__| |_|   \\___/ \\__|_|_| |_|_|\\___/ ");
+        getLogger().info("                                                                  ");
+        getLogger().info("  Edition : ENTERPRISE S-Class ($100 Professional Tier)          ");
+        getLogger().info("  Features: Dynamic GUI, Equipment Manager, RGB Hologram, CPvP   ");
+        getLogger().info("==================================================================");
+    }
+
+    public static String colorize(String message) {
+        if (message == null) return "";
+        Matcher matcher = HEX_PATTERN.matcher(message);
+        StringBuilder buffer = new StringBuilder();
+        while (matcher.find()) {
+            String color = matcher.group(1);
+            StringBuilder replacement = new StringBuilder("§x");
+            for (char c : color.toCharArray()) {
+                replacement.append('§').append(c);
+            }
+            matcher.appendReplacement(buffer, replacement.toString());
+        }
+        matcher.appendTail(buffer);
+        return ChatColor.translateAlternateColorCodes('&', buffer.toString());
+    }
+
+    private void createBotsFile() {
+        botsFile = new File(getDataFolder(), "bots.yml");
+        if (!botsFile.exists()) {
+            try { botsFile.createNewFile(); } catch (IOException e) { getLogger().severe("Gagal membuat bots.yml!"); }
+        }
+        botsConfig = YamlConfiguration.loadConfiguration(botsFile);
+    }
+
+    private void createMenuFile() {
+        menuFile = new File(getDataFolder(), "menu.yml");
+        if (!menuFile.exists()) {
+            saveResource("menu.yml", false);
+        }
+        menuConfig = YamlConfiguration.loadConfiguration(menuFile);
+    }
+
+    private void loadBotsFromStorage() {
+        if (botsConfig.contains("bots")) {
+            for (String key : Objects.requireNonNull(botsConfig.getConfigurationSection("bots")).getKeys(false)) {
+                createdTemplates.put(key, botsConfig.getString("bots." + key, "default"));
             }
         }
-        botRegistry.clear();
+    }
+
+    private void saveBotsToStorage() {
+        for (Map.Entry<String, String> entry : createdTemplates.entrySet()) {
+            botsConfig.set("bots." + entry.getKey(), entry.getValue());
+        }
+        try { botsConfig.save(botsFile); } catch (IOException e) { getLogger().severe("Gagal menyimpan bots.yml!"); }
     }
 
     @Override
-    public List<String> onTabComplete(CommandSender s, Command c, String alias, String[] args) {
-        List<String> list = new ArrayList<>();
-        String cmd = c.getName().toLowerCase();
-        if (cmd.equals("botskin")) {
-            if (args.length == 1) list.add("url");
-            else if (args.length == 2 && args[0].equalsIgnoreCase("url")) list.addAll(botRegistry.keySet());
-            else if (args.length == 4) { list.add("wide"); list.add("slim"); }
-        } else if (cmd.equals("botkill")) {
-            if (args.length == 1) list.addAll(botRegistry.keySet());
-        } else if (cmd.equals("botitem")) {
-            if (args.length == 1) list.addAll(botRegistry.keySet());
-            else if (args.length == 2) { list.add("mace"); list.add("sword"); list.add("cpvp"); list.add("anchor"); }
-        } else if (cmd.equals("botinv") || cmd.equals("botspawn") || cmd.equals("botpossess") || cmd.equals("nametag") || cmd.equals("botgradient")) {
-            if (args.length == 1) list.addAll(botRegistry.keySet());
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("Command ini khusus untuk Player in-game!");
+            return true;
         }
-        return list;
+
+        Player player = (Player) sender;
+        String prefix = colorize(getConfig().getString("messages.prefix", "&8[&b&lDanzzBot&8] &r"));
+
+        if (args.length == 0 || args[0].equalsIgnoreCase("menu")) {
+            openCommercialMainMenu(player);
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1.0f, 1.2f);
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("create")) {
+            if (!player.hasPermission("danzzbot.admin")) {
+                player.sendMessage(prefix + ChatColor.RED + "Akses ditolak!");
+                return true;
+            }
+            if (args.length < 2) {
+                player.sendMessage(prefix + ChatColor.RED + "Penggunaan: /danzzbot create <nama>");
+                return true;
+            }
+            String name = args[1];
+            createdTemplates.put(name, "default");
+            saveBotsToStorage();
+            
+            player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1.5f);
+            player.sendActionBar(colorize("&aTemplate Enterprise '" + name + "' berhasil dibuat!"));
+            player.sendMessage(prefix + ChatColor.GREEN + "Template bot baru tersimpan: " + ChatColor.YELLOW + name);
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("spawn")) {
+            if (args.length < 2) {
+                player.sendMessage(prefix + ChatColor.RED + "Penggunaan: /danzzbot spawn <nama>");
+                return true;
+            }
+            spawnEnterpriseBot(player, args[1]);
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("remove")) {
+            if (args.length < 2) {
+                player.sendMessage(prefix + ChatColor.RED + "Penggunaan: /danzzbot remove <nama>");
+                return true;
+            }
+            removeEnterpriseBot(player, args[1]);
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("equipment")) {
+            if (!player.hasPermission("danzzbot.admin")) {
+                player.sendMessage(prefix + ChatColor.RED + "Akses ditolak!");
+                return true;
+            }
+            if (args.length < 2) {
+                player.sendMessage(prefix + ChatColor.RED + "Penggunaan: /danzzbot equipment <nama_bot>");
+                return true;
+            }
+            NPC npc = CitizensAPI.getNPCRegistry().getByName(args[1]);
+            if (npc != null) {
+                openEquipmentManagerMenu(player, npc);
+            } else {
+                player.sendMessage(prefix + ChatColor.RED + "Bot dengan nama tersebut tidak ditemukan!");
+            }
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("skin")) {
+            if (args.length < 3) {
+                player.sendMessage(prefix + ChatColor.RED + "Penggunaan: /danzzbot skin <nama_bot> <username_skin>");
+                return true;
+            }
+            NPC npc = CitizensAPI.getNPCRegistry().getByName(args[1]);
+            if (npc != null) {
+                SkinTrait skinTrait = npc.getOrAddTrait(SkinTrait.class);
+                skinTrait.setSkinName(args[2]);
+                player.sendMessage(prefix + colorize("&aSkin bot &e" + args[1] + " &aberhasil diubah menjadi: &f" + args[2]));
+            } else {
+                player.sendMessage(prefix + ChatColor.RED + "Bot tidak ditemukan!");
+            }
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("removeall")) {
+            if (!player.hasPermission("danzzbot.admin")) {
+                player.sendMessage(prefix + ChatColor.RED + "Akses ditolak!");
+                return true;
+            }
+            removeAllHolograms();
+            removeAllBossBars();
+            int count = 0;
+            for (NPC npc : CitizensAPI.getNPCRegistry()) {
+                npc.destroy();
+                count++;
+            }
+            player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
+            player.sendActionBar(ChatColor.RED + "Semua unit (" + count + ") dimusnahkan!");
+            player.sendMessage(prefix + ChatColor.GREEN + "Seluruh bot berhasil dibersihkan!");
+            return true;
+        }
+
+        player.sendMessage(prefix + ChatColor.RED + "Command tidak dikenal. Ketik /danzzbot menu");
+        return true;
     }
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) return true;
-        Player p = (Player) sender;
-        String cmd = command.getName().toLowerCase();
+    private void openCommercialMainMenu(Player player) {
+        menuConfig = YamlConfiguration.loadConfiguration(menuFile);
+        String title = colorize(menuConfig.getString("main-menu.title", "&d&lDanzzBot Menu"));
+        int size = menuConfig.getInt("main-menu.size", 27);
 
-        if (cmd.equals("botgui")) { openPage1(p); return true; }
-        if (cmd.equals("botreload")) { reloadConfig(); p.sendMessage(ChatColor.GREEN + "✔ Config reloaded!"); return true; }
-        if (cmd.equals("botcreate") && args.length > 0) {
-            if (botRegistry.containsKey(args[0])) { p.sendMessage(ChatColor.RED + "Bot sudah ada!"); return true; }
-            String dUrl = getConfig().getString("default-skin.url", "https://minesk.in/b99aa1f02594468c95307736628af54a");
-            botRegistry.put(args[0], new BotSession(args[0], dUrl, "wide"));
-            p.sendMessage(ChatColor.GREEN + "✔ Bot '" + args[0] + "' dibuat!");
-            return true;
-        }
-        if (cmd.equals("botspawn") && args.length > 0) {
-            spawnBot(args[0], p.getLocation());
-            p.sendMessage(ChatColor.GREEN + "🚀 Bot di-spawn!");
-            return true;
-        }
-        if (cmd.equals("botinv")) {
-            if (args.length == 0) { openInvSelect(p); return true; }
-            BotSession b = botRegistry.get(args[0]);
-            if (b != null) openBotInv(p, b);
-            return true;
-        }
-        if (cmd.equals("botkill") && args.length > 0) {
-            BotSession b = botRegistry.get(args[0]);
-            if (b != null) {
-                if (b.getEntity() != null) b.getEntity().remove();
-                b.setSpawned(false);
-                Bukkit.broadcastMessage(ChatColor.YELLOW + b.getName() + " left the game");
+        Inventory inv = Bukkit.createInventory(null, size, title);
+
+        setupMenuItem(inv, "main-menu.items.bot-list", Material.PLAYER_HEAD);
+        setupMenuItem(inv, "main-menu.items.create-bot", Material.NETHER_STAR);
+        setupMenuItem(inv, "main-menu.items.settings", Material.REDSTONE_COMPARATOR);
+        setupMenuItem(inv, "main-menu.items.equipment-manager", Material.NETHERITE_CHESTPLATE);
+        setupMenuItem(inv, "main-menu.items.control-bot", Material.NETHERITE_SWORD);
+        setupMenuItem(inv, "main-menu.items.teleport-bot", Material.ENDER_PEARL);
+        setupMenuItem(inv, "main-menu.items.remove-all", Material.BARRIER);
+        
+        if (menuConfig.contains("main-menu.items.background.slot")) {
+            List<Integer> bgSlots = menuConfig.getIntegerList("main-menu.items.background.slot");
+            ItemStack bgItem = createItem(Material.GRAY_STAINED_GLASS_PANE, colorize("&8"), List.of());
+            for (int slot : bgSlots) {
+                inv.setItem(slot, bgItem);
             }
-            return true;
         }
-        if (cmd.equals("botitem") && args.length >= 2) {
-            BotSession b = botRegistry.get(args[0]);
-            if (b != null && b.getEntity() != null) {
-                String type = args[1].toLowerCase();
-                if (type.equals("mace")) {
-                    b.getEntity().getEquipment().setItemInMainHand(new ItemStack(Material.MACE));
-                    b.setCpvpMode(false);
-                    p.sendMessage(ChatColor.GREEN + "✔ " + b.getName() + " diberi Mace!");
-                } else if (type.equals("sword")) {
-                    b.getEntity().getEquipment().setItemInMainHand(new ItemStack(Material.NETHERITE_SWORD));
-                    b.setCpvpMode(false);
-                    p.sendMessage(ChatColor.GREEN + "✔ " + b.getName() + " diberi Pedang Netherite!");
-                } else if (type.equals("cpvp")) {
-                    b.setCpvpMode(true);
-                    b.getEntity().getEquipment().setItemInMainHand(new ItemStack(Material.END_CRYSTAL));
-                    b.getEntity().getEquipment().setItemInOffHand(new ItemStack(Material.OBSIDIAN));
-                    p.sendMessage(ChatColor.LIGHT_PURPLE + "🔮 " + b.getName() + " masuk Mode Crystal PvP!");
-                } else if (type.equals("anchor")) {
-                    b.setCpvpMode(true);
-                    b.getEntity().getEquipment().setItemInMainHand(new ItemStack(Material.RESPAWN_ANCHOR));
-                    b.getEntity().getEquipment().setItemInOffHand(new ItemStack(Material.GLOWSTONE));
-                    p.sendMessage(ChatColor.GOLD + "💥 " + b.getName() + " masuk Mode Anchor Glow PvP!");
-                }
-            }
-            return true;
-        }
-        if (cmd.equals("botpossess") && args.length > 0) {
-            BotSession b = botRegistry.get(args[0]);
-            if (b != null && b.isSpawned()) {
-                b.setPossessed(true);
-                playerPossessions.put(p.getUniqueId(), b.getName());
-                p.teleport(b.getLocation());
-            }
-            return true;
-        }
-        if (cmd.equals("botunpossess")) {
-            String bName = playerPossessions.remove(p.getUniqueId());
-            if (bName != null && botRegistry.containsKey(bName)) botRegistry.get(bName).setPossessed(false);
-            p.sendMessage(ChatColor.GREEN + "🔮 Keluar dari rasuk.");
-            return true;
-        }
-        if (cmd.equals("botskin") && args.length >= 4 && args[0].equalsIgnoreCase("url")) {
-            BotSession b = botRegistry.get(args[1]);
-            if (b != null) {
-                b.setSkinUrl(args[2]);
-                b.setModelType(args[3]);
-                p.sendMessage(ChatColor.GREEN + "🎨 Skin URL diperbarui!");
-                if (b.getEntity() != null) loadStandSkin(b.getEntity(), b.getName(), b.getSkinUrl());
-            }
-            return true;
-        }
-        if (cmd.equals("nametag") && args.length >= 2) {
-            BotSession b = botRegistry.get(args[0]);
-            if (b != null) {
-                StringBuilder sb = new StringBuilder();
-                for (int i = 1; i < args.length; i++) sb.append(args[i]).append(" ");
-                b.setNametag(sb.toString().trim());
-                if (b.getEntity() != null) b.getEntity().setCustomName(b.getFormattedNametag(getConfig()));
-            }
-            return true;
-        }
-        if (cmd.equals("botgradient") && args.length >= 2) {
-            BotSession b = botRegistry.get(args[0]);
-            if (b != null) {
-                b.setGradientColor(args[1]);
-                if (b.getEntity() != null) b.getEntity().setCustomName(b.getFormattedNametag(getConfig()));
-            }
-            return true;
-        }
-        return false;
+
+        player.openInventory(inv);
     }
 
-    @EventHandler
-    public void onMove(PlayerMoveEvent e) {
-        Player p = e.getPlayer();
-        if (playerPossessions.containsKey(p.getUniqueId())) {
-            BotSession b = botRegistry.get(playerPossessions.get(p.getUniqueId()));
-            if (b != null && b.getEntity() != null) b.getEntity().teleport(p.getLocation());
+    private void openSettingsMenu(Player player) {
+        menuConfig = YamlConfiguration.loadConfiguration(menuFile);
+        String title = colorize(menuConfig.getString("settings-menu.title", "&1&lSettings Engine"));
+        int size = menuConfig.getInt("settings-menu.size", 27);
+
+        Inventory inv = Bukkit.createInventory(null, size, title);
+
+        boolean follow = getConfig().getBoolean("settings.follow", true);
+        boolean attack = getConfig().getBoolean("settings.attack-cpvp", true);
+        boolean mining = getConfig().getBoolean("settings.mining", false);
+        boolean chatbot = getConfig().getBoolean("settings.chatbot", true);
+        boolean hologram = getConfig().getBoolean("settings.hologram", true);
+        boolean bossbar = getConfig().getBoolean("settings.bossbar-status", true);
+        boolean aura = getConfig().getBoolean("settings.particle-aura", true);
+
+        inv.setItem(menuConfig.getInt("settings-menu.items.follow.slot", 10), createItem(follow ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.follow.name") + " &7- " + (follow ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
+        inv.setItem(menuConfig.getInt("settings-menu.items.attack.slot", 11), createItem(attack ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.attack.name") + " &7- " + (attack ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
+        inv.setItem(menuConfig.getInt("settings-menu.items.mining.slot", 12), createItem(mining ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.mining.name") + " &7- " + (mining ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
+        inv.setItem(menuConfig.getInt("settings-menu.items.chatbot.slot", 13), createItem(chatbot ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.chatbot.name") + " &7- " + (chatbot ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
+        inv.setItem(menuConfig.getInt("settings-menu.items.hologram.slot", 14), createItem(hologram ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.hologram.name") + " &7- " + (hologram ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
+        inv.setItem(menuConfig.getInt("settings-menu.items.bossbar.slot", 15), createItem(bossbar ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.bossbar.name") + " &7- " + (bossbar ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
+        inv.setItem(menuConfig.getInt("settings-menu.items.aura.slot", 16), createItem(aura ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.aura.name") + " &7- " + (aura ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
+
+        setupMenuItem(inv, "settings-menu.items.back", Material.ARROW);
+        player.openInventory(inv);
+    }
+
+    private void openEquipmentManagerMenu(Player player, NPC npc) {
+        Inventory inv = Bukkit.createInventory(null, 27, colorize("&#BD00FF&lEquipment &7| &f" + npc.getName()));
+
+        Equipment eq = npc.getOrAddTrait(Equipment.class);
+        inv.setItem(10, eq.getEquipment(Equipment.EquipmentSlot.HELMET) != null ? eq.getEquipment(Equipment.EquipmentSlot.HELMET) : new ItemStack(Material.AIR));
+        inv.setItem(11, eq.getEquipment(Equipment.EquipmentSlot.CHESTPLATE) != null ? eq.getEquipment(Equipment.EquipmentSlot.CHESTPLATE) : new ItemStack(Material.AIR));
+        inv.setItem(12, eq.getEquipment(Equipment.EquipmentSlot.LEGGINGS) != null ? eq.getEquipment(Equipment.EquipmentSlot.LEGGINGS) : new ItemStack(Material.AIR));
+        inv.setItem(13, eq.getEquipment(Equipment.EquipmentSlot.BOOTS) != null ? eq.getEquipment(Equipment.EquipmentSlot.BOOTS) : new ItemStack(Material.AIR));
+        inv.setItem(15, eq.getEquipment(Equipment.EquipmentSlot.HAND) != null ? eq.getEquipment(Equipment.EquipmentSlot.HAND) : new ItemStack(Material.AIR));
+        inv.setItem(16, eq.getEquipment(Equipment.EquipmentSlot.OFF_HAND) != null ? eq.getEquipment(Equipment.EquipmentSlot.OFF_HAND) : new ItemStack(Material.AIR));
+
+        inv.setItem(22, createItem(Material.ARROW, colorize("&f&l« Kembali ke Menu Utama"), List.of(colorize("&7Klik untuk simpan & kembali"))));
+        player.openInventory(inv);
+    }
+
+    private void setupMenuItem(Inventory inv, String path, Material fallbackMat) {
+        if (!menuConfig.contains(path)) return;
+        int slot = menuConfig.getInt(path + ".slot");
+        String matStr = menuConfig.getString(path + ".material", fallbackMat.name());
+        Material mat = Material.matchMaterial(matStr);
+        if (mat == null) mat = fallbackMat;
+
+        String name = colorize(menuConfig.getString(path + ".name", ""));
+        List<String> rawLore = menuConfig.getStringList(path + ".lore");
+        List<String> lore = new ArrayList<>();
+        for (String l : rawLore) {
+            lore.add(colorize(l));
         }
+
+        inv.setItem(slot, createItem(mat, name, lore));
     }
 
-    private void openPage1(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 27, GUI_P1);
-        inv.setItem(11, makeHead("gui-heads.page1-to-page2", ChatColor.GREEN + "➡️ Control Panel", null));
-        if (getConfig().getBoolean("features.possess-mode.enabled", true)) {
-            inv.setItem(13, makeHead("gui-heads.possess-bot", ChatColor.LIGHT_PURPLE + "🔮 Possess Bot", null));
-        }
-        inv.setItem(15, makeHead("gui-heads.bot-list", ChatColor.GOLD + "📋 Bot List", null));
-        p.openInventory(inv);
-    }
-
-    private void openPage2(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 36, GUI_P2);
-        inv.setItem(10, makeHead("gui-heads.create-bot", ChatColor.AQUA + "➕ Create Bot", null));
-        inv.setItem(12, makeHead("gui-heads.change-skin", ChatColor.GREEN + "🎨 Skin Config", null));
-        inv.setItem(14, makeHead("gui-heads.view-inventory", ChatColor.DARK_AQUA + "🎒 Bot Inventory", null));
-        inv.setItem(16, makeHead("gui-heads.reload-config", ChatColor.RED + "🔄 Reload Config", null));
-        inv.setItem(27, makeHead("gui-heads.back-button", ChatColor.RED + "⬅️ Back", null));
-        p.openInventory(inv);
-    }
-
-    private void openList(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 54, GUI_LIST);
+    private void openBotListMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, colorize("&#00FF66&lSelect Unit to Deploy"));
         int slot = 0;
-        for (BotSession b : botRegistry.values()) {
-            if (slot >= 45) break;
-            inv.setItem(slot++, makeHead("gui-heads.bot-list", b.getFormattedNametag(getConfig()), Arrays.asList(ChatColor.YELLOW + "Klik untuk Spawn")));
+        for (String name : createdTemplates.keySet()) {
+            if (slot >= 26) break;
+            inv.setItem(slot++, createItem(Material.PLAYER_HEAD, colorize("&a" + name), List.of(colorize("&eKlik untuk deploy unit"))));
         }
-        inv.setItem(49, makeHead("gui-heads.back-button", ChatColor.RED + "⬅️ Back", null));
-        p.openInventory(inv);
+        inv.setItem(26, createItem(Material.ARROW, colorize("&fKembali"), List.of()));
+        player.openInventory(inv);
     }
 
-    private void openPossessSelect(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 54, GUI_POSSESS);
+    private void openControlMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, colorize("&#00F2FF&lSelect Unit to Possess"));
         int slot = 0;
-        for (BotSession b : botRegistry.values()) {
-            if (slot >= 45) break;
-            if (b.isSpawned()) inv.setItem(slot++, makeHead("gui-heads.possess-bot", ChatColor.LIGHT_PURPLE + b.getName(), null));
+        for (NPC npc : CitizensAPI.getNPCRegistry()) {
+            if (slot >= 26) break;
+            inv.setItem(slot++, createItem(Material.ZOMBIE_HEAD, colorize("&c" + npc.getName()), List.of(colorize("&7Ambil alih kendali unit"))));
         }
-        inv.setItem(49, makeHead("gui-heads.back-button", ChatColor.RED + "⬅️ Back", null));
-        p.openInventory(inv);
+        inv.setItem(26, createItem(Material.ARROW, colorize("&fKembali"), List.of()));
+        player.openInventory(inv);
     }
 
-    private void openSkinSelect(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 54, GUI_SKIN);
+    private void openEquipmentTargetMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, colorize("&#BD00FF&lSelect Unit for Equipment"));
         int slot = 0;
-        for (BotSession b : botRegistry.values()) {
-            if (slot >= 45) break;
-            inv.setItem(slot++, makeHead("gui-heads.change-skin", ChatColor.GREEN + b.getName(), null));
+        for (NPC npc : CitizensAPI.getNPCRegistry()) {
+            if (slot >= 26) break;
+            inv.setItem(slot++, createItem(Material.ARMOR_STAND, colorize("&e" + npc.getName()), List.of(colorize("&7Atur armor & senjata bot ini"))));
         }
-        inv.setItem(49, makeHead("gui-heads.back-button", ChatColor.RED + "⬅️ Back", null));
-        p.openInventory(inv);
+        inv.setItem(26, createItem(Material.ARROW, colorize("&fKembali"), List.of()));
+        player.openInventory(inv);
     }
 
-    private void openInvSelect(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 54, GUI_INV);
+    private void openTeleportMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, colorize("&#FFD700&lQuantum Teleport Destination"));
         int slot = 0;
-        for (BotSession b : botRegistry.values()) {
-            if (slot >= 45) break;
-            inv.setItem(slot++, makeHead("gui-heads.view-inventory", ChatColor.DARK_AQUA + b.getName(), null));
+        for (NPC npc : CitizensAPI.getNPCRegistry()) {
+            if (slot >= 26) break;
+            inv.setItem(slot++, createItem(Material.ENDER_EYE, colorize("&6" + npc.getName()), List.of(colorize("&7Teleport ke posisi unit"))));
         }
-        inv.setItem(49, makeHead("gui-heads.back-button", ChatColor.RED + "⬅️ Back", null));
-        p.openInventory(inv);
+        inv.setItem(26, createItem(Material.ARROW, colorize("&fKembali"), List.of()));
+        player.openInventory(inv);
     }
 
-    private void openBotInv(Player p, BotSession b) {
-        Inventory inv = Bukkit.createInventory(null, 27, ChatColor.DARK_AQUA + "🎒 " + b.getName());
-        inv.setContents(b.getInventoryStorage());
-        viewingBotInventory.put(p.getUniqueId(), b.getName());
-        p.openInventory(inv);
-    }
-
-    @EventHandler
-    public void onClick(InventoryClickEvent e) {
-        String title = e.getView().getTitle();
-        Player p = (Player) e.getWhoClicked();
-        if (title.startsWith(ChatColor.DARK_AQUA + "🎒 ")) return;
-        if (!title.equals(GUI_P1) && !title.equals(GUI_P2) && !title.equals(GUI_LIST) && !title.equals(GUI_POSSESS) && !title.equals(GUI_SKIN) && !title.equals(GUI_INV)) return;
-
-        e.setCancelled(true);
-        int slot = e.getRawSlot();
-
-        if (title.equals(GUI_P1)) {
-            if (slot == 11) openPage2(p);
-            else if (slot == 13) openPossessSelect(p);
-            else if (slot == 15) openList(p);
-        } else if (title.equals(GUI_P2)) {
-            if (slot == 10) { p.sendMessage("Ketik: /botcreate <nama>"); p.closeInventory(); }
-            else if (slot == 12) openSkinSelect(p);
-            else if (slot == 14) openInvSelect(p);
-            else if (slot == 16) { reloadConfig(); p.closeInventory(); }
-            else if (slot == 27) openPage1(p);
-        } else if (title.equals(GUI_LIST) && slot < 45 && e.getCurrentItem() != null && e.getCurrentItem().hasItemMeta()) {
-            String name = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName());
-            for (BotSession b : botRegistry.values()) {
-                if (ChatColor.stripColor(b.getFormattedNametag(getConfig())).equalsIgnoreCase(name)) {
-                    spawnBot(b.getName(), p.getLocation());
-                    p.closeInventory();
-                    break;
-                }
-            }
-        } else if (title.equals(GUI_POSSESS) && slot < 45 && e.getCurrentItem() != null && e.getCurrentItem().hasItemMeta()) {
-            String name = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName());
-            BotSession b = botRegistry.get(name);
-            if (b != null && b.isSpawned()) {
-                b.setPossessed(true);
-                playerPossessions.put(p.getUniqueId(), b.getName());
-                p.teleport(b.getLocation());
-                p.closeInventory();
-            }
-        } else if (title.equals(GUI_SKIN) && slot < 45 && e.getCurrentItem() != null && e.getCurrentItem().hasItemMeta()) {
-            String name = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName());
-            p.sendMessage("Ketik: /botskin url " + name + " <url> wide/slim");
-            p.closeInventory();
-        } else if (title.equals(GUI_INV) && slot < 45 && e.getCurrentItem() != null && e.getCurrentItem().hasItemMeta()) {
-            String name = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName());
-            BotSession b = botRegistry.get(name);
-            if (b != null) openBotInv(p, b);
-        } else if (slot == 49) {
-            if (title.equals(GUI_LIST) || title.equals(GUI_POSSESS)) openPage1(p);
-            else if (title.equals(GUI_SKIN) || title.equals(GUI_INV)) openPage2(p);
-        }
-    }
-
-    @EventHandler
-    public void onClose(org.bukkit.event.inventory.InventoryCloseEvent e) {
-        Player p = (Player) e.getPlayer();
-        if (viewingBotInventory.containsKey(p.getUniqueId())) {
-            String bName = viewingBotInventory.remove(p.getUniqueId());
-            BotSession b = botRegistry.get(bName);
-            if (b != null) b.setInventoryStorage(e.getInventory().getContents());
-        }
-    }
-
-    private ItemStack makeHead(String path, String name, List<String> lore) {
-        String url = getConfig().getString(path, "https://minesk.in/b99aa1f02594468c95307736628af54a");
-        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-        SkullMeta meta = (SkullMeta) head.getItemMeta();
+    private ItemStack createItem(Material mat, String name, List<String> lore) {
+        ItemStack item = new ItemStack(mat);
+        ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);
-            if (lore != null) meta.setLore(lore);
-            head.setItemMeta(meta);
+            meta.setLore(lore);
+            item.setItemMeta(meta);
         }
-        applySkinFromUrl(head, url);
-        return head;
+        return item;
     }
 
-    private void applySkinFromUrl(ItemStack head, String skinUrl) {
-        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
-            try {
-                String api = skinUrl.contains("api.mineskin.org") ? skinUrl : "https://api.mineskin.org/get/id/" + skinUrl.substring(skinUrl.lastIndexOf('/') + 1);
-                HttpURLConnection conn = (HttpURLConnection) new URL(api).openConnection();
-                conn.setRequestMethod("GET");
-                BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = r.readLine()) != null) sb.append(line);
-                r.close();
-                String res = sb.toString();
-                String val = getJsonVal(res, "value");
-                String sig = getJsonVal(res, "signature");
-                if (val != null && sig != null) {
-                    Bukkit.getScheduler().runTask(this, () -> {
-                        try {
-                            SkullMeta meta = (SkullMeta) head.getItemMeta();
-                            if (meta != null) {
-                                Object profile = Bukkit.class.getMethod("createProfile", UUID.class).invoke(null, UUID.randomUUID());
-                                java.lang.reflect.Method setProp = profile.getClass().getMethod("setProperty", Class.forName("com.destroystokyo.paper.profile.Property"));
-                                Object prop = Class.forName("com.destroystokyo.paper.profile.Property").getConstructor(String.class, String.class, String.class).newInstance("textures", val, sig);
-                                setProp.invoke(profile, prop);
-                                meta.getClass().getMethod("setPlayerProfile", Class.forName("com.destroystokyo.paper.profile.PlayerProfile")).invoke(meta, profile);
-                                head.setItemMeta(meta);
-                            }
-                        } catch (Exception ignored) {}
-                    });
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player)) return;
+        Player player = (Player) event.getWhoClicked();
+        String title = event.getView().getTitle();
+        String prefix = colorize(getConfig().getString("messages.prefix", "&8[&b&lDanzzBot&8] &r"));
+
+        if (title.contains("DanzzBot") || title.contains("Engine") || title.contains("Select") || title.contains("Quantum") || title.contains("Equipment")) {
+            if (title.contains("Equipment")) {
+                return;
+            }
+
+            event.setCancelled(true);
+            ItemStack clicked = event.getCurrentItem();
+            if (clicked == null || !clicked.hasItemMeta()) return;
+            String name = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
+
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.9f, 1.3f);
+
+            if (title.contains("S-Class Enterprise") || title.contains("Menu")) {
+                if (name.contains("Deploy Unit")) openBotListMenu(player);
+                else if (name.contains("Create New Template")) {
+                    player.closeInventory();
+                    player.sendMessage(prefix + ChatColor.YELLOW + "Ketik command: /danzzbot create <nama>");
+                } else if (name.contains("Engine Settings")) openSettingsMenu(player);
+                else if (name.contains("Equipment Manager")) openEquipmentTargetMenu(player);
+                else if (name.contains("Possess")) openControlMenu(player);
+                else if (name.contains("Quantum Teleport")) openTeleportMenu(player);
+                else if (name.contains("Purge All Units")) {
+                    removeAllHolograms();
+                    removeAllBossBars();
+                    for (NPC npc : CitizensAPI.getNPCRegistry()) npc.destroy();
+                    player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
+                    player.sendActionBar(ChatColor.RED + "Semua unit dimusnahkan!");
+                    player.closeInventory();
                 }
-            } catch (Exception ignored) {}
-        });
-    }
-
-    private void loadStandSkin(ArmorStand stand, String name, String skinUrl) {
-        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
-            try {
-                String api = skinUrl.contains("api.mineskin.org") ? skinUrl : "https://api.mineskin.org/get/id/" + skinUrl.substring(skinUrl.lastIndexOf('/') + 1);
-                HttpURLConnection conn = (HttpURLConnection) new URL(api).openConnection();
-                conn.setRequestMethod("GET");
-                BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = r.readLine()) != null) sb.append(line);
-                r.close();
-                String res = sb.toString();
-                String val = getJsonVal(res, "value");
-                String sig = getJsonVal(res, "signature");
-                if (val != null && sig != null) {
-                    Bukkit.getScheduler().runTask(this, () -> {
-                        try {
-                            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-                            SkullMeta meta = (SkullMeta) head.getItemMeta();
-                            if (meta != null) {
-                                Object profile = Bukkit.class.getMethod("createProfile", UUID.class, String.class).invoke(null, UUID.randomUUID(), name);
-                                java.lang.reflect.Method setProp = profile.getClass().getMethod("setProperty", Class.forName("com.destroystokyo.paper.profile.Property"));
-                                Object prop = Class.forName("com.destroystokyo.paper.profile.Property").getConstructor(String.class, String.class, String.class).newInstance("textures", val, sig);
-                                setProp.invoke(profile, prop);
-                                meta.getClass().getMethod("setPlayerProfile", Class.forName("com.destroystokyo.paper.profile.PlayerProfile")).invoke(meta, profile);
-                                head.setItemMeta(meta);
-                            }
-                            stand.getEquipment().setHelmet(head);
-                        } catch (Exception ignored) {}
-                    });
+            } else if (title.contains("Feature Control") || title.contains("Settings")) {
+                if (name.contains("Follow AI")) {
+                    boolean val = !getConfig().getBoolean("settings.follow");
+                    getConfig().set("settings.follow", val);
+                    saveConfig();
+                    openSettingsMenu(player);
+                } else if (name.contains("CPvP / Combat AI")) {
+                    boolean val = !getConfig().getBoolean("settings.attack-cpvp");
+                    getConfig().set("settings.attack-cpvp", val);
+                    saveConfig();
+                    openSettingsMenu(player);
+                } else if (name.contains("Auto Mining")) {
+                    boolean val = !getConfig().getBoolean("settings.mining");
+                    getConfig().set("settings.mining", val);
+                    saveConfig();
+                    openSettingsMenu(player);
+                } else if (name.contains("Chatbot Slang")) {
+                    boolean val = !getConfig().getBoolean("settings.chatbot");
+                    getConfig().set("settings.chatbot", val);
+                    saveConfig();
+                    openSettingsMenu(player);
+                } else if (name.contains("Floating Hologram")) {
+                    boolean val = !getConfig().getBoolean("settings.hologram");
+                    getConfig().set("settings.hologram", val);
+                    saveConfig();
+                    if (!val) removeAllHolograms();
+                    openSettingsMenu(player);
+                } else if (name.contains("Bossbar Tracker")) {
+                    boolean val = !getConfig().getBoolean("settings.bossbar-status");
+                    getConfig().set("settings.bossbar-status", val);
+                    saveConfig();
+                    if (!val) removeAllBossBars();
+                    openSettingsMenu(player);
+                } else if (name.contains("Particle Aura Trail")) {
+                    boolean val = !getConfig().getBoolean("settings.particle-aura");
+                    getConfig().set("settings.particle-aura", val);
+                    saveConfig();
+                    openSettingsMenu(player);
+                } else if (name.contains("Kembali")) {
+                    openCommercialMainMenu(player);
                 }
-            } catch (Exception ignored) {}
-        });
+            } else if (title.contains("Select Unit to Deploy")) {
+                if (name.contains("Kembali")) openCommercialMainMenu(player);
+                else {
+                    spawnEnterpriseBot(player, name);
+                    player.closeInventory();
+                }
+            } else if (title.contains("Select Unit for Equipment")) {
+                if (name.contains("Kembali")) openCommercialMainMenu(player);
+                else {
+                    NPC npc = CitizensAPI.getNPCRegistry().getByName(name);
+                    if (npc != null) openEquipmentManagerMenu(player, npc);
+                }
+            } else if (title.contains("Select Unit to Possess")) {
+                if (name.contains("Kembali")) openCommercialMainMenu(player);
+                else {
+                    NPC npc = CitizensAPI.getNPCRegistry().getByName(name);
+                    if (npc != null) {
+                        controlledBots.put(player.getUniqueId(), npc);
+                        player.sendActionBar(colorize("&aMengambil alih unit: &e" + name));
+                        player.closeInventory();
+                    }
+                }
+            } else if (title.contains("Quantum Teleport")) {
+                if (name.contains("Kembali")) openCommercialMainMenu(player);
+                else {
+                    NPC npc = CitizensAPI.getNPCRegistry().getByName(name);
+                    if (npc != null && npc.isSpawned()) {
+                        player.teleport(npc.getStoredLocation());
+                        player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+                        player.sendActionBar(colorize("&6Quantum TP ke unit &e" + name));
+                        player.closeInventory();
+                    }
+                }
+            }
+        }
     }
 
-    private String getJsonVal(String json, String key) {
-        try {
-            int idx = json.indexOf("\"" + key + "\"");
-            if (idx == -1) return null;
-            int start = json.indexOf("\"", idx + key.length() + 2) + 1;
-            int end = json.indexOf("\"", start);
-            return json.substring(start, end);
-        } catch (Exception e) { return null; }
+    private void spawnEnterpriseBot(Player player, String name) {
+        String prefix = colorize(getConfig().getString("messages.prefix", "&8[&b&lDanzzBot&8] &r"));
+        Location loc = player.getLocation();
+        
+        NPC npc = CitizensAPI.getNPCRegistry().createNPC(org.bukkit.entity.EntityType.PLAYER, name);
+        npc.spawn(loc);
+
+        if (getConfig().getBoolean("settings.skin-system", true)) {
+            SkinTrait skinTrait = npc.getOrAddTrait(SkinTrait.class);
+            skinTrait.setSkinName(getConfig().getString("skin-settings.default-skin-user", "DanzzReal"));
+        }
+
+        if (npc.getOrAddTrait(Equipment.class) != null) {
+            Equipment eq = npc.getOrAddTrait(Equipment.class);
+            try {
+                eq.setEquipment(Equipment.EquipmentSlot.HELMET, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.helmet", "NETHERITE_HELMET"))));
+                eq.setEquipment(Equipment.EquipmentSlot.CHESTPLATE, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.chestplate", "NETHERITE_CHESTPLATE"))));
+                eq.setEquipment(Equipment.EquipmentSlot.LEGGINGS, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.leggings", "NETHERITE_LEGGINGS"))));
+                eq.setEquipment(Equipment.EquipmentSlot.BOOTS, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.boots", "NETHERITE_BOOTS"))));
+                eq.setEquipment(Equipment.EquipmentSlot.HAND, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.main-hand", "NETHERITE_SWORD"))));
+                eq.setEquipment(Equipment.EquipmentSlot.OFF_HAND, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.off-hand", "TOTEM_OF_UNDYING"))));
+            } catch (Exception e) {
+                getLogger().warning("Gagal memuat material equipment!");
+            }
+        }
+
+        if (npc.getEntity() instanceof LivingEntity) {
+            LivingEntity le = (LivingEntity) npc.getEntity();
+            le.setHealth(20.0);
+            le.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, Integer.MAX_VALUE, 0, false, false));
+            le.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE, Integer.MAX_VALUE, getConfig().getInt("combat.resistance-amplifier", 1), false, false));
+        }
+
+        loc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc.add(0, 1, 0), 40, 0.6, 0.6, 0.6, 0.15);
+        loc.getWorld().playSound(loc, Sound.ITEM_TOTEM_USE, 1.0f, 1.0f);
+
+        Bukkit.broadcastMessage(ChatColor.YELLOW + name + " joined the game");
+        player.sendActionBar(colorize("&aUnit Enterprise '" + name + "' berhasil dideploy!"));
+        player.sendMessage(prefix + colorize("&aUnit " + name + " aktif dengan Perlengkapan S-Class!"));
     }
 
-    private void spawnBot(String name, Location loc) {
-        BotSession b = botRegistry.get(name);
-        if (b == null) return;
-        if (b.getEntity() != null) b.getEntity().remove();
-
-        ArmorStand stand = (ArmorStand) loc.getWorld().spawnEntity(loc, EntityType.ARMOR_STAND);
-        stand.setCustomName(b.getFormattedNametag(getConfig()));
-        stand.setCustomNameVisible(true);
-        stand.setArms(true);
-        stand.setBasePlate(false);
-        stand.setGravity(true);
-        b.setHealth(getConfig().getDouble("settings.default-health", 20.0));
-
-        loadStandSkin(stand, name, b.getSkinUrl());
-        stand.getEquipment().setItemInMainHand(new ItemStack(Material.MACE));
-
-        b.setEntity(stand);
-        b.setLocation(loc);
-        b.setSpawned(true);
-        Bukkit.broadcastMessage(ChatColor.YELLOW + b.getName() + " joined the game");
+    private void removeEnterpriseBot(Player player, String name) {
+        String prefix = colorize(getConfig().getString("messages.prefix", "&8[&b&lDanzzBot&8] &r"));
+        NPC npc = CitizensAPI.getNPCRegistry().getByName(name);
+        if (npc != null) {
+            removeHologramOfNPC(npc.getUniqueId());
+            removeBossBarOfNPC(npc.getUniqueId());
+            Location loc = npc.getStoredLocation();
+            if (loc != null && loc.getWorld() != null) {
+                loc.getWorld().spawnParticle(Particle.POOF, loc, 25, 0.3, 0.5, 0.3, 0.05);
+                loc.getWorld().playSound(loc, Sound.ENTITY_ITEM_BREAK, 1.0f, 0.8f);
+            }
+            npc.destroy();
+            Bukkit.broadcastMessage(ChatColor.YELLOW + name + " left the game");
+            player.sendActionBar(ChatColor.RED + "Unit " + name + " dihapus.");
+            player.sendMessage(prefix + ChatColor.GREEN + "Unit " + name + " berhasil dihapus.");
+        } else {
+            player.sendMessage(prefix + ChatColor.RED + "Unit tidak ditemukan!");
+        }
     }
 
-    private void startEngine() {
+    @EventHandler
+    public void onEntityDeath(EntityDeathEvent event) {
+        LivingEntity entity = event.getEntity();
+        for (NPC npc : CitizensAPI.getNPCRegistry()) {
+            if (npc.isSpawned() && npc.getEntity() != null && npc.getEntity().equals(entity)) {
+                removeHologramOfNPC(npc.getUniqueId());
+                removeBossBarOfNPC(npc.getUniqueId());
+                String name = npc.getName();
+                Bukkit.broadcastMessage(ChatColor.YELLOW + name + " died");
+                break;
+            }
+        }
+    }
+
+    private void startEnterpriseEngineTask() {
         new BukkitRunnable() {
             @Override
             public void run() {
-                FileConfiguration cfg = getConfig();
-                boolean pvp = cfg.getBoolean("features.bot-pvp-attack.enabled", true);
-                double pvpDmg = cfg.getDouble("settings.pvp-damage", 12.0);
-                double range = cfg.getDouble("settings.detection-range", 16.0);
+                reloadConfig();
 
-                for (BotSession b : botRegistry.values()) {
-                    if (!b.isSpawned() || b.getEntity() == null || b.isPossessed()) continue;
-                    ArmorStand ent = b.getEntity();
-                    Location loc = ent.getLocation();
-                    ent.setCustomName(b.getFormattedNametag(cfg));
+                boolean cpvpActive = getConfig().getBoolean("settings.attack-cpvp", true);
+                boolean chatActive = getConfig().getBoolean("settings.chatbot", true);
+                boolean autoHeal = getConfig().getBoolean("combat.auto-heal", true);
+                boolean auraActive = getConfig().getBoolean("settings.particle-aura", true);
+                List<String> slangs = getConfig().getStringList("chat-slang");
 
-                    if (b.getAttackCooldown() > 0) b.setAttackCooldown(b.getAttackCooldown() - 1);
-                    if (b.getCpvpCooldown() > 0) b.setCpvpCooldown(b.getCpvpCooldown() - 1);
+                for (NPC npc : CitizensAPI.getNPCRegistry()) {
+                    if (!npc.isSpawned() || npc.getEntity() == null) continue;
 
-                    Player target = null;
-                    for (Entity n : loc.getWorld().getNearbyEntities(loc, range, range, range)) {
-                        if (n instanceof Player && !playerPossessions.containsKey(n.getUniqueId())) {
-                            target = (Player) n;
-                            break;
+                    updateOrSpawnHologram(npc);
+                    updateOrSpawnBossBar(npc);
+
+                    LivingEntity npcEntity = (LivingEntity) npc.getEntity();
+
+                    if (auraActive) {
+                        String auraName = getConfig().getString("visuals.aura-type", "SOUL_FIRE_FLAME");
+                        Particle p = Particle.SOUL_FIRE_FLAME;
+                        try { p = Particle.valueOf(auraName); } catch (Exception ignored) {}
+                        npcEntity.getWorld().spawnParticle(p, npcEntity.getLocation().add(0, 1, 0), 2, 0.3, 0.5, 0.3, 0.02);
+                    }
+
+                    if (autoHeal && npcEntity.getHealth() < 10.0 && npcEntity.getHealth() > 0.0) {
+                        npcEntity.setHealth(Math.min(20.0, npcEntity.getHealth() + 6.0));
+                        npcEntity.getWorld().spawnParticle(Particle.HEART, npcEntity.getLocation().add(0, 2, 0), 5, 0.3, 0.3, 0.3, 0.1);
+                        npcEntity.getWorld().playSound(npcEntity.getLocation(), Sound.ENTITY_GENERIC_DRINK, 0.8f, 1.0f);
+                    }
+
+                    if (cpvpActive) {
+                        double radius = getConfig().getDouble("combat.attack-radius", 8.0);
+                        for (Entity target : npcEntity.getNearbyEntities(radius, radius, radius)) {
+                            if (target instanceof Player && !target.getName().equals(npc.getName())) {
+                                if (random.nextInt(7) == 0) {
+                                    Location loc = target.getLocation();
+                                    loc.getWorld().spawn(loc, EndCrystal.class);
+                                    loc.getWorld().playSound(loc, Sound.BLOCK_RESPAWN_ANCHOR_SET_SPAWN, 1.0f, 1.0f);
+                                    
+                                    if (random.nextInt(3) == 0) {
+                                        target.sendMessage(colorize("&c[" + npc.getName() + "] S-Class Crystal & Anchor Combat Active! 💥"));
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    int tick = b.getAnimTick() + 1;
-                    b.setAnimTick(tick);
-                    double armS = Math.sin(tick * 0.5) * 0.75;
-                    ent.setLeftArmPose(new EulerAngle(armS, 0, 0));
-                    ent.setRightArmPose(new EulerAngle(-armS, 0, 0));
-
-                    if (target != null && pvp) {
-                        Vector dir = target.getLocation().toVector().subtract(loc.toVector()).normalize();
-                        loc.setDirection(dir);
-                        double distance = loc.distance(target.getLocation());
-
-                        if (b.isCpvpMode() && b.getCpvpCooldown() == 0 && distance <= 6.0) {
-                            Location targetFoot = target.getLocation().getBlock().getLocation();
-                            targetFoot.getWorld().spawnEntity(targetFoot, EntityType.END_CRYSTAL);
-                            targetFoot.getWorld().createExplosion(targetFoot, 5.0f, false, false);
-                            targetFoot.getWorld().playSound(targetFoot, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
-                            b.setCpvpCooldown(30);
-                        } 
-                        else if (distance > 2.0) {
-                            loc.add(dir.multiply(0.45));
-                            ent.teleport(loc);
-                        } else if (b.getAttackCooldown() == 0) {
-                            target.damage(pvpDmg, ent);
-                            target.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_STRONG, 1.0f, 1.0f);
-                            b.setAttackCooldown(10);
-                        }
-                    } else {
-                        if (tick % 25 == 0) {
-                            b.setMoveVector(new Vector((Math.random() - 0.5) * 0.4, 0, (Math.random() - 0.5) * 0.4));
-                        }
-                        Vector move = b.getMoveVector();
-                        if (move.lengthSquared() > 0) {
-                            loc.add(move);
-                            ent.teleport(loc);
-                        }
+                    if (chatActive && slangs != null && !slangs.isEmpty() && random.nextInt(120) < 5) {
+                        String randomSlang = slangs.get(random.nextInt(slangs.size()));
+                        Bukkit.broadcastMessage(ChatColor.GRAY + "<" + ChatColor.AQUA + npc.getName() + ChatColor.GRAY + "> " + ChatColor.WHITE + randomSlang);
                     }
                 }
             }
-        }.runTaskTimer(this, 2L, 2L);
+        }.runTaskTimer(this, 0L, 10L);
     }
-}
+
+    private void updateOrSpawnHologram(NPC npc) {
+        if (!getConfig().getBoolean("settings.hologram", true) || !npc.isSpawned() || npc.getEntity() == null) {
+            removeHologramOfNPC(npc.getUniqueId());
+            return;
+        }
+
+        LivingEntity entity = (LivingEntity) npc.getEntity();
+        Location loc = entity.getLocation().add(0, 2.3, 0);
+        String rgbFormat = getConfig().getString("visuals.hologram-rgb-format", "&#00F2FF&l[Enterprise] &#FFFFFF%npc_name% &7- &#00FF66%health% HP");
+        String text = colorize(rgbFormat.replace("%npc_name%", npc.getName()).replace("%health%", String.format("%.1f", entity.getHealth())));
+
+        ArmorStand hologram = botHolograms.get(npc.getUniqueId());
+        if (hologram == null || !hologram.isValid()) {
+            hologram = entity.getWorld().spawn(loc, ArmorStand.class, stand -> {
+                stand.setVisible(false);
+                stand.setGravity(false);
+                stand.setCustomName(text);
+                stand.setCustomNameVisible(true);
+                stand.setMarker(true);
+            });
+            botHolograms.put(npc.getUniqueId(), hologram);
+        } else {
+            hologram.teleport(loc);
+            hologram.setCustomName(text);
+        }
+    }
+
+    private void updateOrSpawnBossBar(NPC npc) {
+        if (!getConfig().getBoolean("settings.bossbar-status", true) || !npc.isSpawned() || npc.getEntity() == null) {
+            removeBossBarOfNPC(npc.getUniqueId());
+            return;
+        }
+
+        LivingEntity entity = (LivingEntity) npc.getEntity();
+        BossBar bar = botBossBars.get(npc.getUniqueId());
+        
+        if (bar == null) {
+            bar = Bukkit.createBossBar(colorize("&#00F2FFUnit: &#FFFFFF" + npc.getName()), BarColor.PURPLE, BarStyle.SOLID);
+            bar.setVisible(true);
+            botBossBars.put(npc.getUniqueId(), bar);
+        }
+
+        bar.setProgress(Math.max(0.0, Math.min(1.0, entity.getHealth() / 20.0)));
+        
+        for (Player p : entity.getWorld().getPlayers()) {
+            if (p.getLocation().distanceSquared(entity.getLocation()) <= 225) {
+                bar.addPlayer(p);
+            } else {
+                bar.removePlayer(p);
+            }
+        }
+    }
+
+    private void removeHologramOfNPC(UUID uuid) {
+        ArmorStand stand = botHolograms.remove(uuid);
+        if (stand != null && stand.isValid()) stand.remove();
+    }
+
+    private void removeBossBarOfNPC(UUID uuid) {
+        BossBar bar = botBossBars.remove(uuid);
+        if (bar != null) bar.removeAll();
+    }
+
+    private void removeAllHolograms() {
+        for (ArmorStand stand : botHolograms.values()) {
+            if (stand != null && stand.isValid()) stand.remove();
+        }
+        botHolograms.clear();
+    }
+
+    private void removeAllBossBars() {
+        for (BossBar bar : botBossBars.values()) {
+            if (bar != null) bar.removeAll();
+        }
+        botBossBars.clear();
+    }
+
+    @EventHandler
+    public void onServerListPing(ServerListPingEvent event) {
+        int extra = getConfig().getInt("motd.extra-online-count", 10);
+        event.setMaxPlayers(event.getMaxPlayers() + extra);
+
+        String motdText = colorize(getConfig().getString("motd.text", "&#00F2FF&lDanzzBot Enterprise"));
+        event.setMotd(motdText);
+    }
+
+    public static class DanzzBotPlaceholderExpansion extends PlaceholderExpansion {
+        private final DanzzBot plugin;
+        public DanzzBotPlaceholderExpansion(DanzzBot plugin) { this.plugin = plugin; }
+
+        @Override public @NotNull String getIdentifier() { return "danzzbot"; }
+        @Override public @NotNull String getAuthor() { return "DanzzReal"; }
+        @Override public @NotNull String getVersion() { return "8.0"; }
+        @Override public boolean persist() { return true; }
+
+        @Override
+        public String onPlaceholderRequest(Player player, @NotNull String params) {
+            if (params.equalsIgnoreCase("count")) {
+                int count = 0;
+                for (NPC npc : CitizensAPI.getNPCRegistry()) { if (npc.isSpawned()) count++; }
+                return String.valueOf(count);
+            }
+            if (params.equalsIgnoreCase("templates")) {
+                return String.valueOf(plugin.createdTemplates.size());
+            }
+            return null;
+        }
+    }
+                }
