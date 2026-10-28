@@ -16,3 +16,4 @@ commands:
     description: Command utama DanzzBot Enterprise Edition
     permission: danzzbot.use
     usage: /danzzbot [menu|create|spawn|remove|removeall|equipment|skin]
+    
