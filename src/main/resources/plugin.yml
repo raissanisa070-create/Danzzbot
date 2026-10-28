@@ -1,11 +1,18 @@
 name: DanzzBot
-version: 1.0
+version: 8.0-ENTERPRISE
 main: com.danzz.danzzbot.DanzzBot
 api-version: '1.21'
 depend: [Citizens]
+softdepend: [PlaceholderAPI]
+permissions:
+  danzzbot.admin:
+    description: Akses penuh administrator DanzzBot Enterprise
+    default: op
+  danzzbot.use:
+    description: Akses dasar menggunakan menu DanzzBot
+    default: true
 commands:
   danzzbot:
-    description: Command utama DanzzBot
-    permission: danzzbot.admin
-    usage: /danzzbot [menu|create|spawn|remove|removeall|follow|attack|mining|chatbot]
-    
+    description: Command utama DanzzBot Enterprise Edition
+    permission: danzzbot.use
+    usage: /danzzbot [menu|create|spawn|remove|removeall|equipment|skin]
