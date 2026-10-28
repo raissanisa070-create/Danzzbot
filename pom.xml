@@ -22,7 +22,7 @@
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
     </repositories>
-
+         
     <dependencies>
         <!-- Paper API 1.21 -->
         <dependency>
@@ -38,7 +38,7 @@
             <artifactId>citizens-main</artifactId>
             <version>2.7.3-SNAPSHOT</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/libs/Citizens.jar</systemPath>
+            <systemPath>${project.basedir}/libs/Citizens-2.0.44-b4268.jar</systemPath>
         </dependency>
 
         <!-- PlaceholderAPI (Lokal) -->
@@ -47,9 +47,17 @@
             <artifactId>placeholderapi</artifactId>
             <version>2.11.6</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/libs/PlaceholderAPI.jar</systemPath>
+            <systemPath>${project.basedir}/libs/PlaceholderAPI-2.12.3.jar</systemPath>
         </dependency>
     </dependencies>
+        <!-- PlaceholderAPI (Lokal) -->
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
+            <version>2.11.6</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/PlaceholderAPI-2.12.3.jar</systemPath>
+        </dependency>
 
     <build>
         <plugins>
