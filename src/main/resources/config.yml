@@ -1,24 +1,57 @@
-# ==========================================
-# DanzzBot Configuration File (Paper 1.21)
-# ==========================================
+# ==========================================================
+# DanzzBot Enterprise Edition Configuration (Paper 1.21)
+# ==========================================================
 
 settings:
   follow: true
   attack-cpvp: true
   mining: false
   chatbot: true
+  hologram: true
+  bossbar-status: true
+  particle-aura: true
+  skin-system: true
+
+skin-settings:
+  default-skin-user: "DanzzReal"
+
+# Perlengkapan Tempur Default Bot
+default-equipment:
+  helmet: "NETHERITE_HELMET"
+  chestplate: "NETHERITE_CHESTPLATE"
+  leggings: "NETHERITE_LEGGINGS"
+  boots: "NETHERITE_BOOTS"
+  main-hand: "NETHERITE_SWORD"
+  off-hand: "TOTEM_OF_UNDYING"
+
+visuals:
+  aura-type: "SOUL_FIRE_FLAME"
+  aura-interval-ticks: 20
+  hologram-rgb-format: "&#00F2FF&l[Enterprise] &#FFFFFF%npc_name% &7- &#00FF66%health% HP"
+
+combat:
+  default-style: "CRYSTAL_PVP"
+  auto-totem: true
+  auto-heal: true
+  attack-radius: 8.0
+  resistance-amplifier: 1
+
+messages:
+  prefix: "&8[&b&lDanzzBot Enterprise&8] &r"
+  bot-spawned: "&aBerhasil men-spawn unit: &e%bot_name%"
+  bot-removed: "&cUnit &e%bot_name% &ctelah dihapus."
 
 motd:
-  text: "&b&lDanzzBot Server &7- &aOnline &f| &ePaper 1.21"
-  hover-tooltip: "&eBot Aktif: &f%bot_count%\n&aCPvP & Combat 2026 Ready!"
-  extra-online-count: 5
+  text: "&#00F2FF&lDanzzBot Enterprise &7- &#00FF66Online &f| &#FFD700Paper 1.21"
+  hover-tooltip: "&eBot Aktif (%bot_count%):\n&f- DanzzBot Engine Enterprise Ready!\n&aCPvP, RGB Nametag & Smart AI Active!"
+  extra-online-count: 10
 
 chat-slang:
   - "halo cuy"
-  - "Waduh slow banget abangku yg satu ini 🗿"
+  - "Waduh sepong banget abangku yg satu ini 🗿"
   - "Mental CPvP lu mana bro, melipir dlu aje wkwk 💀"
   - "Sabar tod, gua lagi setup obsidian sm crystal dlu 🥶"
   - "Gaya lu bro, mentang-mentang pake netherite 💅"
   - "Ez bgt bro, cupu lu wkwkwk 🗿"
   - "Mana musuhnya? Senggol dikit lgsung pecah crystalnya 💥"
-  
+  - "servernya bagus ayo ramein"
