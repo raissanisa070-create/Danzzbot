@@ -144,6 +144,13 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         try { botsConfig.save(botsFile); } catch (IOException e) { getLogger().severe("Gagal menyimpan bots.yml!"); }
     }
 
+    private NPC findNPCByName(String name) {
+        for (NPC npc : CitizensAPI.getNPCRegistry()) {
+            if (npc.getName().equalsIgnoreCase(name)) return npc;
+        }
+        return null;
+    }
+
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!(sender instanceof Player)) {
@@ -206,7 +213,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
                 player.sendMessage(prefix + ChatColor.RED + "Penggunaan: /danzzbot equipment <nama_bot>");
                 return true;
             }
-            NPC npc = CitizensAPI.getNPCRegistry().getByName(args[1]);
+            NPC npc = findNPCByName(args[1]);
             if (npc != null) {
                 openEquipmentManagerMenu(player, npc);
             } else {
@@ -220,7 +227,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
                 player.sendMessage(prefix + ChatColor.RED + "Penggunaan: /danzzbot skin <nama_bot> <username_skin>");
                 return true;
             }
-            NPC npc = CitizensAPI.getNPCRegistry().getByName(args[1]);
+            NPC npc = findNPCByName(args[1]);
             if (npc != null) {
                 SkinTrait skinTrait = npc.getOrAddTrait(SkinTrait.class);
                 skinTrait.setSkinName(args[2]);
@@ -262,7 +269,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
 
         setupMenuItem(inv, "main-menu.items.bot-list", Material.PLAYER_HEAD);
         setupMenuItem(inv, "main-menu.items.create-bot", Material.NETHER_STAR);
-        setupMenuItem(inv, "main-menu.items.settings", Material.REDSTONE_COMPARATOR);
+        setupMenuItem(inv, "main-menu.items.settings", Material.COMPARATOR);
         setupMenuItem(inv, "main-menu.items.equipment-manager", Material.NETHERITE_CHESTPLATE);
         setupMenuItem(inv, "main-menu.items.control-bot", Material.NETHERITE_SWORD);
         setupMenuItem(inv, "main-menu.items.teleport-bot", Material.ENDER_PEARL);
@@ -310,12 +317,12 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         Inventory inv = Bukkit.createInventory(null, 27, colorize("&#BD00FF&lEquipment &7| &f" + npc.getName()));
 
         Equipment eq = npc.getOrAddTrait(Equipment.class);
-        inv.setItem(10, eq.getEquipment(Equipment.EquipmentSlot.HELMET) != null ? eq.getEquipment(Equipment.EquipmentSlot.HELMET) : new ItemStack(Material.AIR));
-        inv.setItem(11, eq.getEquipment(Equipment.EquipmentSlot.CHESTPLATE) != null ? eq.getEquipment(Equipment.EquipmentSlot.CHESTPLATE) : new ItemStack(Material.AIR));
-        inv.setItem(12, eq.getEquipment(Equipment.EquipmentSlot.LEGGINGS) != null ? eq.getEquipment(Equipment.EquipmentSlot.LEGGINGS) : new ItemStack(Material.AIR));
-        inv.setItem(13, eq.getEquipment(Equipment.EquipmentSlot.BOOTS) != null ? eq.getEquipment(Equipment.EquipmentSlot.BOOTS) : new ItemStack(Material.AIR));
-        inv.setItem(15, eq.getEquipment(Equipment.EquipmentSlot.HAND) != null ? eq.getEquipment(Equipment.EquipmentSlot.HAND) : new ItemStack(Material.AIR));
-        inv.setItem(16, eq.getEquipment(Equipment.EquipmentSlot.OFF_HAND) != null ? eq.getEquipment(Equipment.EquipmentSlot.OFF_HAND) : new ItemStack(Material.AIR));
+        inv.setItem(10, eq.get(Equipment.EquipmentSlot.HELMET) != null ? eq.get(Equipment.EquipmentSlot.HELMET) : new ItemStack(Material.AIR));
+        inv.setItem(11, eq.get(Equipment.EquipmentSlot.CHESTPLATE) != null ? eq.get(Equipment.EquipmentSlot.CHESTPLATE) : new ItemStack(Material.AIR));
+        inv.setItem(12, eq.get(Equipment.EquipmentSlot.LEGGINGS) != null ? eq.get(Equipment.EquipmentSlot.LEGGINGS) : new ItemStack(Material.AIR));
+        inv.setItem(13, eq.get(Equipment.EquipmentSlot.BOOTS) != null ? eq.get(Equipment.EquipmentSlot.BOOTS) : new ItemStack(Material.AIR));
+        inv.setItem(15, eq.get(Equipment.EquipmentSlot.HAND) != null ? eq.get(Equipment.EquipmentSlot.HAND) : new ItemStack(Material.AIR));
+        inv.setItem(16, eq.get(Equipment.EquipmentSlot.OFF_HAND) != null ? eq.get(Equipment.EquipmentSlot.OFF_HAND) : new ItemStack(Material.AIR));
 
         inv.setItem(22, createItem(Material.ARROW, colorize("&f&l« Kembali ke Menu Utama"), List.of(colorize("&7Klik untuk simpan & kembali"))));
         player.openInventory(inv);
@@ -479,13 +486,13 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             } else if (title.contains("Select Unit for Equipment")) {
                 if (name.contains("Kembali")) openCommercialMainMenu(player);
                 else {
-                    NPC npc = CitizensAPI.getNPCRegistry().getByName(name);
+                    NPC npc = findNPCByName(name);
                     if (npc != null) openEquipmentManagerMenu(player, npc);
                 }
             } else if (title.contains("Select Unit to Possess")) {
                 if (name.contains("Kembali")) openCommercialMainMenu(player);
                 else {
-                    NPC npc = CitizensAPI.getNPCRegistry().getByName(name);
+                    NPC npc = findNPCByName(name);
                     if (npc != null) {
                         controlledBots.put(player.getUniqueId(), npc);
                         player.sendActionBar(colorize("&aMengambil alih unit: &e" + name));
@@ -495,7 +502,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             } else if (title.contains("Quantum Teleport")) {
                 if (name.contains("Kembali")) openCommercialMainMenu(player);
                 else {
-                    NPC npc = CitizensAPI.getNPCRegistry().getByName(name);
+                    NPC npc = findNPCByName(name);
                     if (npc != null && npc.isSpawned()) {
                         player.teleport(npc.getStoredLocation());
                         player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
@@ -522,12 +529,12 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         if (npc.getOrAddTrait(Equipment.class) != null) {
             Equipment eq = npc.getOrAddTrait(Equipment.class);
             try {
-                eq.setEquipment(Equipment.EquipmentSlot.HELMET, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.helmet", "NETHERITE_HELMET"))));
-                eq.setEquipment(Equipment.EquipmentSlot.CHESTPLATE, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.chestplate", "NETHERITE_CHESTPLATE"))));
-                eq.setEquipment(Equipment.EquipmentSlot.LEGGINGS, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.leggings", "NETHERITE_LEGGINGS"))));
-                eq.setEquipment(Equipment.EquipmentSlot.BOOTS, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.boots", "NETHERITE_BOOTS"))));
-                eq.setEquipment(Equipment.EquipmentSlot.HAND, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.main-hand", "NETHERITE_SWORD"))));
-                eq.setEquipment(Equipment.EquipmentSlot.OFF_HAND, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.off-hand", "TOTEM_OF_UNDYING"))));
+                eq.set(Equipment.EquipmentSlot.HELMET, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.helmet", "NETHERITE_HELMET"))));
+                eq.set(Equipment.EquipmentSlot.CHESTPLATE, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.chestplate", "NETHERITE_CHESTPLATE"))));
+                eq.set(Equipment.EquipmentSlot.LEGGINGS, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.leggings", "NETHERITE_LEGGINGS"))));
+                eq.set(Equipment.EquipmentSlot.BOOTS, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.boots", "NETHERITE_BOOTS"))));
+                eq.set(Equipment.EquipmentSlot.HAND, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.main-hand", "NETHERITE_SWORD"))));
+                eq.set(Equipment.EquipmentSlot.OFF_HAND, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.off-hand", "TOTEM_OF_UNDYING"))));
             } catch (Exception e) {
                 getLogger().warning("Gagal memuat material equipment!");
             }
@@ -550,7 +557,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
 
     private void removeEnterpriseBot(Player player, String name) {
         String prefix = colorize(getConfig().getString("messages.prefix", "&8[&b&lDanzzBot&8] &r"));
-        NPC npc = CitizensAPI.getNPCRegistry().getByName(name);
+        NPC npc = findNPCByName(name);
         if (npc != null) {
             removeHologramOfNPC(npc.getUniqueId());
             removeBossBarOfNPC(npc.getUniqueId());
@@ -748,5 +755,5 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             }
             return null;
         }
-      }
     }
+    
