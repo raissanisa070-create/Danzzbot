@@ -1,76 +1,24 @@
 # ==========================================
-# DanzzBot v1.3.0 - Master Config
+# DanzzBot Configuration File (Paper 1.21)
 # ==========================================
 
 settings:
-  default-health: 20.0
-  pvp-damage: 9.0
-  detection-range: 16.0
+  follow: true
+  attack-cpvp: true
+  mining: false
+  chatbot: true
 
-# Skin Default & Model Lengan (pilih "wide" untuk Steve atau "slim" untuk Alex)
-default-skin:
-  url: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  model: "wide"
+motd:
+  text: "&b&lDanzzBot Server &7- &aOnline &f| &ePaper 1.21"
+  hover-tooltip: "&eBot Aktif: &f%bot_count%\n&aCPvP & Combat 2026 Ready!"
+  extra-online-count: 5
 
-# Teks keren yang muncul di konsol saat plugin dimuat / server direstart
-restart-messages:
-  - "=========================================="
-  - "  DanzzBot v1.3.0 Berhasil Dimuat Ulang!  "
-  - "  Server AI Fake Player Siap Digunakan.    "
-  - "=========================================="
-
-# Pengaturan URL MineSkin khusus untuk setiap ikon tombol di dalam Menu GUI
-gui-heads:
-  page1-to-page2: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  possess-bot: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  bot-list: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  create-bot: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  change-skin: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  view-inventory: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  reload-config: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  back-button: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  
-  # Tombol Indikator Status Fitur di Page 2
-  toggle-pvp: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  toggle-autokill: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  toggle-autochat: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  toggle-possess: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  toggle-ai: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-  toggle-health: "https://minesk.in/b99aa1f02594468c95307736628af54a"
-
-features:
-  health-indicator:
-    enabled: true
-    high-health-text: " [❤❤❤❤❤]"
-    low-health-text: " [❤❤]"
-
-  auto-chat:
-    enabled: true
-    interval-ticks: 300
-
-  possess-mode:
-    enabled: true
-
-  combat-effects:
-    enable-totem-pop: true
-    enable-mace-aoe-smash: true
-
-  bot-pvp-attack:
-    enabled: true
-
-  auto-kill-nearest-player:
-    enabled: false
-
-  ai-activities:
-    enabled: true
-
-gaul-messages:
+chat-slang:
   - "halo cuy"
-  - "ada yang mau pvp ga bro?"
-  - "gas CPVP Mace santai!"
-  - "lagi nambang dulu ntar baru pvp ya"
-  - "mace smash taste nice bro wkwk"
-  - "gg sih serbernya"
-  - "never hc one top"
-  - "gbt wok enknya ngapin?"
-  - "ramein mau gw bantai ini"
+  - "Waduh slow banget abangku yg satu ini 🗿"
+  - "Mental CPvP lu mana bro, melipir dlu aje wkwk 💀"
+  - "Sabar tod, gua lagi setup obsidian sm crystal dlu 🥶"
+  - "Gaya lu bro, mentang-mentang pake netherite 💅"
+  - "Ez bgt bro, cupu lu wkwkwk 🗿"
+  - "Mana musuhnya? Senggol dikit lgsung pecah crystalnya 💥"
+  
