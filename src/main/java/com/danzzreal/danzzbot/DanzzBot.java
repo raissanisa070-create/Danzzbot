@@ -21,7 +21,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.EndCrystal;
+import org.bukkit.entity.EnderCrystal;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -628,7 +628,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
                             if (target instanceof Player && !target.getName().equals(npc.getName())) {
                                 if (random.nextInt(7) == 0) {
                                     Location loc = target.getLocation();
-                                    loc.getWorld().spawn(loc, EndCrystal.class);
+                                    loc.getWorld().spawn(loc, EnderCrystal.class);
                                     loc.getWorld().playSound(loc, Sound.BLOCK_RESPAWN_ANCHOR_SET_SPAWN, 1.0f, 1.0f);
                                     
                                     if (random.nextInt(3) == 0) {
