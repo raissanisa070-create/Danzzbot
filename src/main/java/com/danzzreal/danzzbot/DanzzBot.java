@@ -442,7 +442,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         inv.setItem(13, createItem(security ? Material.LIME_DYE : Material.GRAY_DYE, colorize("&bClaim Security &7- " + (security ? "[ACTIVE]" : "[OFF]")), List.of(colorize("&7Proteksi wilayah anti-grief bot"))));
         inv.setItem(14, createItem(chatbot ? Material.LIME_DYE : Material.GRAY_DYE, colorize("&bChatbot Slang &7- " + (chatbot ? "[ACTIVE]" : "[OFF]")), List.of()));
         inv.setItem(15, createItem(hologram ? Material.LIME_DYE : Material.GRAY_DYE, colorize("&dFloating Hologram &7- " + (hologram ? "[ACTIVE]" : "[OFF]")), List.of()));
-        inv.setItem(16, createItem(bossbar ? Material.LIME_DYE : Material.GRAY_DYE, colorize("&5Bossbar Tracker &7- " + (bossbar ? "[ACTIVE]" : "[OFF]")), List.of()));
+         inv.setItem(16, createItem(bossbar ? Material.LIME_DYE : Material.GRAY_DYE, colorize("&5Bossbar Tracker &7- " + (bossbar ? "[ACTIVE]" : "[OFF]")), List.of()));
 
         inv.setItem(22, createItem(Material.ARROW, colorize("&f« Kembali ke Menu Utama"), List.of()));
         player.openInventory(inv);
@@ -516,8 +516,15 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         Inventory inv = Bukkit.createInventory(null, 27, colorize("&4&lNetwork Performance & Audit"));
         
         double tps = Bukkit.getTPS()[0];
+        
+        // Hitung total bot aman tanpa error method size()
+        int totalBots = 0;
+        for (NPC ignored : CitizensAPI.getNPCRegistry()) {
+            totalBots++;
+        }
+
         inv.setItem(11, createItem(Material.DIAMOND, colorize("&a&lServer TPS: &e" + String.format("%.2f", tps)), List.of(colorize("&7Status performa server utama"))));
-        inv.setItem(13, createItem(Material.BOOK, colorize("&b&lTotal Active Bots: &e" + CitizensAPI.getNPCRegistry().size()), List.of(colorize("&7Jumlah unit bot aktif di dunia"))));
+        inv.setItem(13, createItem(Material.BOOK, colorize("&b&lTotal Active Bots: &e" + totalBots), List.of(colorize("&7Jumlah unit bot aktif di dunia"))));
         
         int slot = 18;
         for (String log : auditLogs) {
@@ -558,7 +565,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
     }
 
     @EventHandler
-    public void onPlayerMove(PlayerMoveEvent event) {
+     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
         if (controlledBots.containsKey(player.getUniqueId())) {
             NPC npc = controlledBots.get(player.getUniqueId());
@@ -600,7 +607,8 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
                 }
             }
         }
-     }
+    }
+
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
@@ -988,7 +996,6 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         int totalExtra = dynamicCount ? (activeBotCount + staticExtra) : staticExtra;
 
         event.setMaxPlayers(event.getMaxPlayers() + totalExtra);
-        event.setNumPlayers(event.getNumPlayers() + totalExtra);
         
         String motdText = getConfig().getString("motd.text", "&#00F2FF&lDanzzBot Enterprise Network 2026");
         event.setMotd(colorize(motdText));
@@ -1000,7 +1007,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
 
         @Override public @NotNull String getIdentifier() { return "danzzbot"; }
         @Override public @NotNull String getAuthor() { return "DanzzReal"; }
-        @Override public @NotNull String getVersion() { return "14.0-NetworkSuite"; }
+        @Override public @NotNullString getVersion() { return "14.0-NetworkSuite"; }
         @Override public boolean persist() { return true; }
 
         @Override
