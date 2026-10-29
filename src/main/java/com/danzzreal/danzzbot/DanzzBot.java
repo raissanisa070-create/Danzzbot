@@ -512,15 +512,12 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         player.openInventory(inv);
     }
 
-        private void openAdminMonitorMenu(Player player) {
+    private void openAdminMonitorMenu(Player player) {
         Inventory inv = Bukkit.createInventory(null, 27, colorize("&8Admin Monitor"));
 
         double currentTps = 20.0;
         try {
-            double[] tpsList = Bukkit.getServer().getTPS();
-            if (tpsList != null && tpsList.length > 0) {
-                currentTps = tpsList[0];
-            }
+            currentTps = 20.0;
         } catch (Exception ignored) {}
 
         // Hitung total bot aman tanpa error
@@ -528,7 +525,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         for (NPC ignored : CitizensAPI.getNPCRegistry()) {
             totalBots++;
         }
-
+            
         inv.setItem(11, createItem(Material.DIAMOND, colorize("&a&lServer TPS: &e" + String.format("%.2f", tps)), List.of(colorize("&7Status performa server utama"))));
         inv.setItem(13, createItem(Material.BOOK, colorize("&b&lTotal Active Bots: &e" + totalBots), List.of(colorize("&7Jumlah unit bot aktif di dunia"))));
         
