@@ -1,4 +1,4 @@
-package com.danzz.danzzbot;
+package com.danzzreal.danzzbot;
 
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
@@ -1001,7 +1001,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
     }
     }
 
-    public static class DanzzBotPlaceholderExpansion extends PlaceholderExpansion {
+        public static class DanzzBotPlaceholderExpansion extends PlaceholderExpansion {
         private final DanzzBot danzzBotPlugin;
         public DanzzBotPlaceholderExpansion(DanzzBot plugin) { this.danzzBotPlugin = plugin; }
 
@@ -1022,5 +1022,5 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             }
             return null;
         }
-    }
-}
+    } // <-- Penutup kelas PlaceholderExpansion
+}     // <-- Penutup kelas utama DanzzBot (INI YANG SERING KURANG ATAU KELEBIHAN)
