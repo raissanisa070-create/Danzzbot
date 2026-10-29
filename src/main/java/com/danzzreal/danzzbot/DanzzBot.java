@@ -1001,13 +1001,13 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         event.setMotd(colorize(motdText));
     }
 
-    public static class DanzzBotPlaceholderExpansion extends PlaceholderExpansion {
+        public static class DanzzBotPlaceholderExpansion extends PlaceholderExpansion {
         private final DanzzBot danzzBotPlugin;
         public DanzzBotPlaceholderExpansion(DanzzBot plugin) { this.danzzBotPlugin = plugin; }
 
         @Override public @NotNull String getIdentifier() { return "danzzbot"; }
         @Override public @NotNull String getAuthor() { return "DanzzReal"; }
-        @Override public @NotNullString getVersion() { return "14.0-NetworkSuite"; }
+        @Override public @NotNull String getVersion() { return "14.0-NetworkSuite"; } // Pastikan baris ini punya return String
         @Override public boolean persist() { return true; }
 
         @Override
