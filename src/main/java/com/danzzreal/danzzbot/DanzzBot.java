@@ -217,7 +217,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         if (sender instanceof Player) {
             Player p = (Player) sender;
             p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.8f);
-            p.sendActionBar(colorize("&a⚡ Network Hot-Reload Berhasil!"));
+            player.sendActionBar(net.kyori.adventure.text.Component.text(colorize("&a⚡ Reload Berhasil!")));
         }
     }
 
@@ -372,7 +372,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
                 }
                 logAudit("Admin " + player.getName() + " memusnahkan seluruh unit bot (" + count + ").");
                 player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
-                player.sendActionBar(ChatColor.RED + "Semua unit (" + count + ") dimusnahkan!");
+                player.sendActionBar(net.kyori.adventure.text.Component.text(colorize("&a⚡ Penghapusan Berhasil!")));
                 player.sendMessage(prefix + ChatColor.GREEN + "Seluruh bot berhasil dibersihkan!");
                 break;
 
@@ -515,7 +515,13 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
     private void openAdminMonitorMenu(Player player) {
         Inventory inv = Bukkit.createInventory(null, 27, colorize("&4&lNetwork Performance & Audit"));
         
-        double tps = Bukkit.getTPS()[0];
+        double currentTps = 20.0;
+try {
+    double[] tps = Bukkit.getTPS();
+    if (tps != null && tps.length > 0) {
+        currentTps = tps[0];
+    }
+} catch (Exception ignored) {}
         
         // Hitung total bot aman tanpa error method size()
         int totalBots = 0;
@@ -629,7 +635,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
                         
                         player.closeInventory();
                         player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.5f);
-                        player.sendActionBar(colorize("&aTemplate Bot '&e" + botName + "&a' berhasil dibuat!"));
+                        player.sendActionBar(net.kyori.adventure.text.Component.text(colorize("&aTemplate Bot '&e" + botName + "&a' berhasil dibuat!")));
                         event.setCancelled(true);
                         return;
                     }
