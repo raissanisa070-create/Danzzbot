@@ -600,8 +600,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
                 }
             }
         }
-    }
-
+     }
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
@@ -977,7 +976,6 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
     public void onServerListPing(ServerListPingEvent event) {
         if (!getConfig().getBoolean("motd.enabled", true)) return;
 
-        // Hitung berapa banyak NPC bot DanzzBot yang sedang aktif di dunia saat ini
         int activeBotCount = 0;
         for (NPC npc : CitizensAPI.getNPCRegistry()) {
             if (npc.isSpawned()) {
@@ -985,23 +983,18 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             }
         }
 
-        // Ambil pengaturan dari config
         boolean dynamicCount = getConfig().getBoolean("motd.dynamic-bot-count", true);
         int staticExtra = getConfig().getInt("motd.extra-online-count", 5);
-
-        // Jika dynamic aktif, jumlah extra online mengikuti jumlah bot aktif + bonus statis config
         int totalExtra = dynamicCount ? (activeBotCount + staticExtra) : staticExtra;
 
-        // Terapkan ke Server List (MOTD)
         event.setMaxPlayers(event.getMaxPlayers() + totalExtra);
-        event.setNumPlayers(event.getNumPlayers() + totalExtra); // Menambah angka pemain online di MOTD
+        event.setNumPlayers(event.getNumPlayers() + totalExtra);
         
         String motdText = getConfig().getString("motd.text", "&#00F2FF&lDanzzBot Enterprise Network 2026");
         event.setMotd(colorize(motdText));
     }
-    }
 
-        public static class DanzzBotPlaceholderExpansion extends PlaceholderExpansion {
+    public static class DanzzBotPlaceholderExpansion extends PlaceholderExpansion {
         private final DanzzBot danzzBotPlugin;
         public DanzzBotPlaceholderExpansion(DanzzBot plugin) { this.danzzBotPlugin = plugin; }
 
@@ -1022,5 +1015,5 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             }
             return null;
         }
-    } // <-- Penutup kelas PlaceholderExpansion
-}     // <-- Penutup kelas utama DanzzBot (INI YANG SERING KURANG ATAU KELEBIHAN)
+    }
+}
