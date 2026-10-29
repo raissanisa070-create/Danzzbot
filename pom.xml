@@ -16,9 +16,20 @@
     </properties>
 
     <repositories>
+        <!-- Spigot Repo -->
         <repository>
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+        </repository>
+        <!-- Sonatype Repo untuk JetBrains Annotations -->
+        <repository>
+            <id>sonatype</id>
+            <url>https://oss.sonatype.org/content/groups/public/</url>
+        </repository>
+        <!-- LuckPerms Repo -->
+        <repository>
+            <id>luckperms</id>
+            <url>https://repo.luckperms.co</url>
         </repository>
     </repositories>
 
@@ -31,7 +42,23 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Citizens Lokal dari folder libs/ -->
+        <!-- JetBrains Annotations (@NotNull) -->
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>24.0.1</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- LuckPerms API -->
+        <dependency>
+            <groupId>net.luckperms</groupId>
+            <artifactId>api</artifactId>
+            <version>5.4</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Citizens API dari folder libs/ lokal -->
         <dependency>
             <groupId>net.citizensnpcs</groupId>
             <artifactId>citizens-api</artifactId>
@@ -40,7 +67,7 @@
             <systemPath>${project.basedir}/libs/Citizens-2.0.43-b4250.jar</systemPath>
         </dependency>
 
-        <!-- PlaceholderAPI Lokal dari folder libs/ -->
+        <!-- PlaceholderAPI dari folder libs/ lokal -->
         <dependency>
             <groupId>me.clip</groupId>
             <artifactId>placeholderapi</artifactId>
