@@ -1,85 +1,74 @@
-# ==========================================================
-# DanzzBot Professional Modern GUI Configuration (Paper 1.21)
-# ==========================================================
+# ==========================================
+# DanzzBot Enterprise Network GUI Configuration
+# ==========================================
 
 main-menu:
-  title: "&#00F2FF&lDanzzBot &7| &#FFD700S-Class Enterprise"
+  title: "&d&lDanzzBot Enterprise Network"
   size: 27
   items:
-    background:
-      slot: [0, 1, 2, 3, 4, 5, 6, 7, 8, 18, 19, 20, 21, 23, 24, 25, 26]
-      material: "GRAY_STAINED_GLASS_PANE"
-      name: "&8"
     bot-list:
       slot: 10
-      material: "PLAYER_HEAD"
-      name: "&#00FF66&lDeploy Unit &7(Spawn)"
+      material: PLAYER_HEAD
+      name: "&a&lDeploy Unit"
       lore:
-        - "&7Pilih template bot tersimpan"
-        - "&7untuk di-spawn ke dunia."
+        - "&7Buka halaman untuk memilih"
+        - "&7template dan summon bot!"
     create-bot:
       slot: 11
-      material: "NETHER_STAR"
-      name: "&#FFD700&lCreate New Template"
+      material: NETHER_STAR
+      name: "&b&lCreate New Template"
       lore:
-        - "&7Buat data bot baru instan"
-        - "&7Tersimpan aman di bots.yml"
+        - "&7Membuat template bot baru"
+        - "&7menggunakan Anvil GUI."
     settings:
-      slot: 13
-      material: "REDSTONE_COMPARATOR"
-      name: "&#FF5555&lEngine Settings &7(On/Off)"
-      lore:
-        - "&7Atur seluruh fitur AI & Combat"
-        - "&7secara real-time."
-    equipment-manager:
-      slot: 14
-      material: "NETHERITE_CHESTPLATE"
-      name: "&#BD00FF&lEquipment Manager"
-      lore:
-        - "&7Atur armor & senjata bot"
-        - "&7secara interaktif."
-    control-bot:
-      slot: 15
-      material: "NETHERITE_SWORD"
-      name: "&#00F2FF&lPossess / Control Unit"
-      lore:
-        - "&7Ambil alih pergerakan bot"
-        - "&7pilihanmu secara langsung."
-    remove-all:
-      slot: 22
-      material: "BARRIER"
-      name: "&#FF0000&lPurge All Units"
-      lore:
-        - "&7Hancurkan seluruh bot aktif"
-        - "&c[!] Tindakan Admin S-Class"
-
-settings-menu:
-  title: "&#00F2FF&lEngine &7| &#FFD700Feature Control"
-  size: 27
-  items:
-    follow:
-      slot: 10
-      name: "&#00FF66Follow AI"
-    attack:
-      slot: 11
-      name: "&#FF5555CPvP / Combat AI"
-    mining:
       slot: 12
-      name: "&#FFD700Auto Mining"
-    chatbot:
+      material: COMPARATOR
+      name: "&e&lEngine Settings"
+      lore:
+        - "&7Atur AI, CPvP, Mining,"
+        - "&7Security & Proteksi Claim."
+    equipment-manager:
       slot: 13
-      name: "&#00F2FFChatbot Slang 2026"
-    hologram:
+      material: NETHERITE_CHESTPLATE
+      name: "&d&lEquipment & Backpack"
+      lore:
+        - "&7Atur armor, senjata, tas,"
+        - "&7gaji bot, & skin unit."
+    control-bot:
       slot: 14
-      name: "&#BD00FFFloating Hologram"
-    bossbar:
+      material: NETHERITE_SWORD
+      name: "&c&lPossess Unit"
+      lore:
+        - "&7Kendalikan gerakan bot"
+        - "&7secara langsung in-game."
+    teleport-bot:
       slot: 15
-      name: "&#FFAA00Bossbar Tracker"
-    aura:
+      material: ENDER_PEARL
+      name: "&6&lQuantum Teleport"
+      lore:
+        - "&7Teleport instan ke"
+        - "&7lokasi unit bot."
+    admin-monitor:
       slot: 16
-      name: "&#0055FFParticle Aura Trail"
-    back:
-      slot: 22
-      material: "ARROW"
-      name: "&f&l« Kembali ke Menu Utama"
+      material: CLOCK
+      name: "&4&lNetwork Performance"
+      lore:
+        - "&7[ADMIN] Pantau TPS, CPU,"
+        - "&7& Audit log server."
+    reload-plugin:
+      slot: 18
+      material: LIME_CONCRETE
+      name: "&a&lReload Plugin"
+      lore:
+        - "&7Reload config & menu"
+        - "&7tanpa restart server!"
+    remove-all:
+      slot: 26
+      material: BARRIER
+      name: "&4&lPurge All Units"
+      lore:
+        - "&7Hapus seluruh bot"
+        - "&7yang sedang aktif."
+    background:
+      slot: [0,1,2,3,4,5,6,7,8,9,17,19,20,21,22,23,24,25]
       
