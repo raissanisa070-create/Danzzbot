@@ -16,17 +16,14 @@
     </properties>
 
     <repositories>
-        <!-- Spigot Repo -->
         <repository>
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
-        <!-- Sonatype Repo untuk JetBrains Annotations -->
         <repository>
             <id>sonatype</id>
             <url>https://oss.sonatype.org/content/groups/public/</url>
         </repository>
-        <!-- LuckPerms Repo -->
         <repository>
             <id>luckperms</id>
             <url>https://repo.luckperms.co</url>
@@ -34,15 +31,15 @@
     </repositories>
 
     <dependencies>
-        <!-- Spigot API -->
+        <!-- Spigot API Versi 1.21 untuk menyesuaikan server 1.21.11 -->
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
-            <version>1.20-R0.1-SNAPSHOT</version>
+            <version>1.21-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
 
-        <!-- JetBrains Annotations (@NotNull) -->
+        <!-- JetBrains Annotations -->
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
@@ -58,7 +55,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Citizens API dari folder libs/ lokal -->
+        <!-- Citizens API dari folder libs/ -->
         <dependency>
             <groupId>net.citizensnpcs</groupId>
             <artifactId>citizens-api</artifactId>
@@ -67,7 +64,7 @@
             <systemPath>${project.basedir}/libs/Citizens-2.0.43-b4250.jar</systemPath>
         </dependency>
 
-        <!-- PlaceholderAPI dari folder libs/ lokal -->
+        <!-- PlaceholderAPI dari folder libs/ -->
         <dependency>
             <groupId>me.clip</groupId>
             <artifactId>placeholderapi</artifactId>
@@ -86,6 +83,7 @@
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
+                    <release>${java.version}</release>
                 </configuration>
             </plugin>
         </plugins>
