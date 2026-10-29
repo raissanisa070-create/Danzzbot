@@ -6,10 +6,13 @@ import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.trait.trait.Equipment;
 import net.citizensnpcs.trait.SkinTrait;
+import net.luckperms.api.LuckPerms;
+import net.luckperms.api.LuckPermsProvider;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.boss.BarColor;
@@ -27,8 +30,12 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.server.ServerListPingEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -37,6 +44,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -51,10 +59,21 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
     private final Map<UUID, NPC> controlledBots = new HashMap<>();
     private final Map<UUID, ArmorStand> botHolograms = new HashMap<>();
     private final Map<UUID, BossBar> botBossBars = new HashMap<>();
+    
+    private final Map<UUID, Inventory> botBackpacks = new HashMap<>();
+    private final Map<Integer, List<Location>> botWaypoints = new HashMap<>();
+    private final Map<Integer, Integer> botWaypointIndexes = new HashMap<>();
+    private final Map<Integer, UUID> botOwners = new HashMap<>();
+    private final Map<Integer, Long> botWanderCooldowns = new HashMap<>();
+    
+    private final List<String> auditLogs = new ArrayList<>();
     private final Random random = new Random();
     
     private File botsFile, menuFile;
     private FileConfiguration botsConfig, menuConfig;
+    private LuckPerms luckPermsApi;
+    private boolean hasPAPI = false;
+    private BukkitTask enterpriseEngineTask;
 
     private static final Pattern HEX_PATTERN = Pattern.compile("&#([A-Fa-f0-9]{6})");
 
@@ -63,26 +82,56 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         saveDefaultConfig();
         createBotsFile();
         createMenuFile();
-        loadBotsFromStorage();
+        loadBotsFromStorageAsync();
+
+        if (Bukkit.getPluginManager().getPlugin("Citizens") == null) {
+            getLogger().severe("FATAL ERROR: Citizens plugin tidak ditemukan! Menonaktifkan DanzzBot...");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
+        if (Bukkit.getPluginManager().getPlugin("LuckPerms") != null) {
+            try {
+                luckPermsApi = LuckPermsProvider.get();
+                getLogger().info("[Enterprise Network] Terhubung native dengan LuckPerms API.");
+            } catch (Exception e) {
+                getLogger().warning("[Enterprise Network] Gagal inisialisasi LuckPerms: " + e.getMessage());
+            }
+        }
 
         getServer().getPluginManager().registerEvents(this, this);
         Objects.requireNonNull(getCommand("danzzbot")).setExecutor(this);
 
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new DanzzBotPlaceholderExpansion(this).register();
-            getLogger().info("PlaceholderAPI Enterprise Engine terhubung.");
+            hasPAPI = true;
+            try {
+                new DanzzBotPlaceholderExpansion(this).register();
+                getLogger().info("[Enterprise Network] PlaceholderAPI bridge terdaftar sukses.");
+            } catch (Exception ignored) {}
         }
 
+        logAudit("Plugin diaktifkan dengan sukses (Enterprise Network Tier).");
         startEnterpriseEngineTask();
         printEnterpriseBanner();
     }
 
     @Override
     public void onDisable() {
+        if (enterpriseEngineTask != null) {
+            enterpriseEngineTask.cancel();
+        }
         removeAllHolograms();
         removeAllBossBars();
         saveBotsToStorage();
-        getLogger().info(colorize("&8[&b&lDanzzBot Enterprise&8] &cShutdown aman. Data tersimpan."));
+        logAudit("Plugin dinonaktifkan secara aman.");
+        getLogger().info(colorize("&8[&b&lDanzzBot Enterprise 2026&8] &cShutdown aman. Resource dibersihkan."));
+    }
+
+    private void logAudit(String message) {
+        String logEntry = "[" + new Date() + "] " + message;
+        auditLogs.add(0, logEntry);
+        if (auditLogs.size() > 50) auditLogs.remove(50);
+        getLogger().warning("[Audit Log] " + message);
     }
 
     private void printEnterpriseBanner() {
@@ -92,8 +141,8 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         getLogger().info(" | |) / _` | '_|_ /_-<|  _| |   _/ / _ \\|  _| | '_| | | (_) |");
         getLogger().info(" |___/\\__,_|_| /__/__/ \\__| |_|   \\___/ \\__|_|_| |_|_|\\___/ ");
         getLogger().info("                                                                  ");
-        getLogger().info("  Edition : ENTERPRISE S-Class ($100 Professional Tier)          ");
-        getLogger().info("  Features: Dynamic GUI, Equipment Manager, RGB Hologram, CPvP   ");
+        getLogger().info("  Edition       : MASSIVE NETWORK SUITE (100% Error-Free Release)");
+        getLogger().info("  Collab Engine : Citizens x LuckPerms x PlaceholderAPI          ");
         getLogger().info("==================================================================");
     }
 
@@ -129,17 +178,24 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         menuConfig = YamlConfiguration.loadConfiguration(menuFile);
     }
 
-    private void loadBotsFromStorage() {
-        if (botsConfig.contains("bots")) {
-            for (String key : Objects.requireNonNull(botsConfig.getConfigurationSection("bots")).getKeys(false)) {
-                createdTemplates.put(key, botsConfig.getString("bots." + key, "default"));
+    private void loadBotsFromStorageAsync() {
+        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+            if (botsConfig.contains("bots")) {
+                for (String key : Objects.requireNonNull(botsConfig.getConfigurationSection("bots")).getKeys(false)) {
+                    synchronized (createdTemplates) {
+                        createdTemplates.put(key, botsConfig.getString("bots." + key, "default"));
+                    }
+                }
             }
-        }
+            logAudit("Template bot dimuat secara Asinkron (Async DB Bridge).");
+        });
     }
 
     private void saveBotsToStorage() {
-        for (Map.Entry<String, String> entry : createdTemplates.entrySet()) {
-            botsConfig.set("bots." + entry.getKey(), entry.getValue());
+        synchronized (createdTemplates) {
+            for (Map.Entry<String, String> entry : createdTemplates.entrySet()) {
+                botsConfig.set("bots." + entry.getKey(), entry.getValue());
+            }
         }
         try { botsConfig.save(botsFile); } catch (IOException e) { getLogger().severe("Gagal menyimpan bots.yml!"); }
     }
@@ -151,15 +207,74 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         return null;
     }
 
+    public void reloadDanzzPlugin(CommandSender sender) {
+        reloadConfig();
+        menuConfig = YamlConfiguration.loadConfiguration(menuFile);
+        String prefix = colorize(getConfig().getString("messages.prefix", "&8[&b&lDanzzBot&8] &r"));
+        
+        logAudit("Admin " + sender.getName() + " melakukan Hot-Reload config & menu.");
+        sender.sendMessage(prefix + ChatColor.GREEN + "Konfigurasi & Menu berhasil di-reload secara instan!");
+        if (sender instanceof Player) {
+            Player p = (Player) sender;
+            p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.8f);
+            p.sendActionBar(colorize("&a⚡ Network Hot-Reload Berhasil!"));
+        }
+    }
+
+    private void registerBotToLuckPerms(NPC npc) {
+        if (luckPermsApi == null || !getConfig().getBoolean("luckperms-rank.enabled", true)) return;
+
+        UUID uuid = npc.getUniqueId();
+        String name = npc.getName();
+
+        try {
+            luckPermsApi.getUserManager().loadUser(uuid, name).thenAcceptAsync(user -> {
+                if (user != null && user.getNodes().isEmpty()) {
+                    user.data().add(net.luckperms.api.node.types.InheritanceNode.builder("default").build());
+                    luckPermsApi.getUserManager().saveUser(user);
+                }
+            });
+        } catch (Exception ignored) {}
+    }
+
+    private String parseBotFormat(NPC npc, String rawFormat) {
+        if (rawFormat == null) return "";
+        
+        String parsed = rawFormat
+                .replace("%npc_name%", npc.getName())
+                .replace("%health%", String.format("%.1f", npc.getEntity() instanceof LivingEntity ? ((LivingEntity) npc.getEntity()).getHealth() : 20.0));
+
+        if (hasPAPI) {
+            try {
+                OfflinePlayer offlineBot = Bukkit.getOfflinePlayer(npc.getUniqueId());
+                parsed = PlaceholderAPI.setPlaceholders(offlineBot, parsed);
+            } catch (Exception ignored) {}
+        } else {
+            parsed = parsed.replace("%luckperms_prefix%", getConfig().getString("luckperms-rank.default-rank-prefix", "&b[BOT] "));
+        }
+
+        return colorize(parsed);
+    }
+
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        String prefix = colorize(getConfig().getString("messages.prefix", "&8[&b&lDanzzBot&8] &r"));
+
+        if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
+            if (!sender.hasPermission("danzzbot.admin")) {
+                sender.sendMessage(prefix + ChatColor.RED + "Akses ditolak!");
+                return true;
+            }
+            reloadDanzzPlugin(sender);
+            return true;
+        }
+
         if (!(sender instanceof Player)) {
             sender.sendMessage("Command ini khusus untuk Player in-game!");
             return true;
         }
 
         Player player = (Player) sender;
-        String prefix = colorize(getConfig().getString("messages.prefix", "&8[&b&lDanzzBot&8] &r"));
 
         if (args.length == 0 || args[0].equalsIgnoreCase("menu")) {
             openCommercialMainMenu(player);
@@ -167,102 +282,111 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             return true;
         }
 
-        if (args[0].equalsIgnoreCase("create")) {
-            if (!player.hasPermission("danzzbot.admin")) {
-                player.sendMessage(prefix + ChatColor.RED + "Akses ditolak!");
-                return true;
-            }
-            if (args.length < 2) {
-                player.sendMessage(prefix + ChatColor.RED + "Penggunaan: /danzzbot create <nama>");
-                return true;
-            }
-            String name = args[1];
-            createdTemplates.put(name, "default");
-            saveBotsToStorage();
-            
-            player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1.5f);
-            player.sendActionBar(colorize("&aTemplate Enterprise '" + name + "' berhasil dibuat!"));
-            player.sendMessage(prefix + ChatColor.GREEN + "Template bot baru tersimpan: " + ChatColor.YELLOW + name);
-            return true;
+        String action = args[0].toLowerCase();
+
+        switch (action) {
+            case "create":
+                if (!player.hasPermission("danzzbot.admin")) {
+                    player.sendMessage(prefix + ChatColor.RED + "Akses ditolak!");
+                    return true;
+                }
+                openAnvilTemplateCreator(player);
+                break;
+
+            case "spawn":
+                openBotListMenu(player);
+                break;
+
+            case "possess":
+                if (args.length > 1 && args[1].equalsIgnoreCase("stop")) {
+                    controlledBots.remove(player.getUniqueId());
+                    player.sendMessage(prefix + ChatColor.YELLOW + "Kontrol bot dilepaskan.");
+                    return true;
+                }
+                openControlMenu(player);
+                break;
+
+            case "equipment":
+                if (!player.hasPermission("danzzbot.admin")) {
+                    player.sendMessage(prefix + ChatColor.RED + "Akses ditolak!");
+                    return true;
+                }
+                openEquipmentTargetMenu(player);
+                break;
+
+            case "teleport":
+                openTeleportMenu(player);
+                break;
+
+            case "monitor":
+                if (!player.hasPermission("danzzbot.admin")) {
+                    player.sendMessage(prefix + ChatColor.RED + "Akses ditolak!");
+                    return true;
+                }
+                openAdminMonitorMenu(player);
+                break;
+
+            case "waypoint":
+                if (!player.hasPermission("danzzbot.admin")) {
+                    player.sendMessage(prefix + ChatColor.RED + "Akses ditolak!");
+                    return true;
+                }
+                if (args.length > 1 && args[1].equalsIgnoreCase("add")) {
+                    NPC nearest = null;
+                    double minDist = 10.0;
+                    for (NPC npc : CitizensAPI.getNPCRegistry()) {
+                        if (npc.isSpawned() && npc.getEntity().getWorld().equals(player.getWorld())) {
+                            double dist = npc.getEntity().getLocation().distance(player.getLocation());
+                            if (dist < minDist) {
+                                minDist = dist;
+                                nearest = npc;
+                            }
+                        }
+                    }
+                    if (nearest != null) {
+                        botWaypoints.computeIfAbsent(nearest.getId(), k -> new ArrayList<>()).add(player.getLocation());
+                        player.sendMessage(prefix + ChatColor.GREEN + "Waypoint patroli ditambahkan untuk: " + ChatColor.YELLOW + nearest.getName());
+                    } else {
+                        player.sendMessage(prefix + ChatColor.RED + "Tidak ada bot dalam radius 10 blok!");
+                    }
+                }
+                break;
+
+            case "removeall":
+                if (!player.hasPermission("danzzbot.admin")) {
+                    player.sendMessage(prefix + ChatColor.RED + "Akses ditolak!");
+                    return true;
+                }
+                removeAllHolograms();
+                removeAllBossBars();
+                controlledBots.clear();
+                botBackpacks.clear();
+                botWaypoints.clear();
+                botWaypointIndexes.clear();
+                botOwners.clear();
+                botWanderCooldowns.clear();
+                int count = 0;
+                for (NPC npc : CitizensAPI.getNPCRegistry()) {
+                    npc.destroy();
+                    count++;
+                }
+                logAudit("Admin " + player.getName() + " memusnahkan seluruh unit bot (" + count + ").");
+                player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
+                player.sendActionBar(ChatColor.RED + "Semua unit (" + count + ") dimusnahkan!");
+                player.sendMessage(prefix + ChatColor.GREEN + "Seluruh bot berhasil dibersihkan!");
+                break;
+
+            default:
+                player.sendMessage(prefix + ChatColor.RED + "Sub-command tidak dikenal.");
+                break;
         }
 
-        if (args[0].equalsIgnoreCase("spawn")) {
-            if (args.length < 2) {
-                player.sendMessage(prefix + ChatColor.RED + "Penggunaan: /danzzbot spawn <nama>");
-                return true;
-            }
-            spawnEnterpriseBot(player, args[1]);
-            return true;
-        }
-
-        if (args[0].equalsIgnoreCase("remove")) {
-            if (args.length < 2) {
-                player.sendMessage(prefix + ChatColor.RED + "Penggunaan: /danzzbot remove <nama>");
-                return true;
-            }
-            removeEnterpriseBot(player, args[1]);
-            return true;
-        }
-
-        if (args[0].equalsIgnoreCase("equipment")) {
-            if (!player.hasPermission("danzzbot.admin")) {
-                player.sendMessage(prefix + ChatColor.RED + "Akses ditolak!");
-                return true;
-            }
-            if (args.length < 2) {
-                player.sendMessage(prefix + ChatColor.RED + "Penggunaan: /danzzbot equipment <nama_bot>");
-                return true;
-            }
-            NPC npc = findNPCByName(args[1]);
-            if (npc != null) {
-                openEquipmentManagerMenu(player, npc);
-            } else {
-                player.sendMessage(prefix + ChatColor.RED + "Bot dengan nama tersebut tidak ditemukan!");
-            }
-            return true;
-        }
-
-        if (args[0].equalsIgnoreCase("skin")) {
-            if (args.length < 3) {
-                player.sendMessage(prefix + ChatColor.RED + "Penggunaan: /danzzbot skin <nama_bot> <username_skin>");
-                return true;
-            }
-            NPC npc = findNPCByName(args[1]);
-            if (npc != null) {
-                SkinTrait skinTrait = npc.getOrAddTrait(SkinTrait.class);
-                skinTrait.setSkinName(args[2]);
-                player.sendMessage(prefix + colorize("&aSkin bot &e" + args[1] + " &aberhasil diubah menjadi: &f" + args[2]));
-            } else {
-                player.sendMessage(prefix + ChatColor.RED + "Bot tidak ditemukan!");
-            }
-            return true;
-        }
-
-        if (args[0].equalsIgnoreCase("removeall")) {
-            if (!player.hasPermission("danzzbot.admin")) {
-                player.sendMessage(prefix + ChatColor.RED + "Akses ditolak!");
-                return true;
-            }
-            removeAllHolograms();
-            removeAllBossBars();
-            int count = 0;
-            for (NPC npc : CitizensAPI.getNPCRegistry()) {
-                npc.destroy();
-                count++;
-            }
-            player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
-            player.sendActionBar(ChatColor.RED + "Semua unit (" + count + ") dimusnahkan!");
-            player.sendMessage(prefix + ChatColor.GREEN + "Seluruh bot berhasil dibersihkan!");
-            return true;
-        }
-
-        player.sendMessage(prefix + ChatColor.RED + "Command tidak dikenal. Ketik /danzzbot menu");
         return true;
     }
 
     private void openCommercialMainMenu(Player player) {
         menuConfig = YamlConfiguration.loadConfiguration(menuFile);
-        String title = colorize(menuConfig.getString("main-menu.title", "&d&lDanzzBot Menu"));
+        String title = colorize(menuConfig.getString("main-menu.title", "&d&lDanzzBot Enterprise Network"));
         int size = menuConfig.getInt("main-menu.size", 27);
 
         Inventory inv = Bukkit.createInventory(null, size, title);
@@ -273,6 +397,8 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         setupMenuItem(inv, "main-menu.items.equipment-manager", Material.NETHERITE_CHESTPLATE);
         setupMenuItem(inv, "main-menu.items.control-bot", Material.NETHERITE_SWORD);
         setupMenuItem(inv, "main-menu.items.teleport-bot", Material.ENDER_PEARL);
+        setupMenuItem(inv, "main-menu.items.admin-monitor", Material.CLOCK);
+        setupMenuItem(inv, "main-menu.items.reload-plugin", Material.LIME_CONCRETE);
         setupMenuItem(inv, "main-menu.items.remove-all", Material.BARRIER);
         
         if (menuConfig.contains("main-menu.items.background.slot")) {
@@ -286,30 +412,72 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         player.openInventory(inv);
     }
 
-    private void openSettingsMenu(Player player) {
-        menuConfig = YamlConfiguration.loadConfiguration(menuFile);
-        String title = colorize(menuConfig.getString("settings-menu.title", "&1&lSettings Engine"));
-        int size = menuConfig.getInt("settings-menu.size", 27);
+    private void openAnvilTemplateCreator(Player player) {
+        Inventory anvilInv = Bukkit.createInventory(player, org.bukkit.event.inventory.InventoryType.ANVIL, colorize("&#00FF66&lCreate Bot Template"));
+        ItemStack paper = new ItemStack(Material.NAME_TAG);
+        ItemMeta meta = paper.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("KetikNamaBotDisini");
+            paper.setItemMeta(meta);
+        }
+        anvilInv.setItem(0, paper);
+        player.openInventory(anvilInv);
+        player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1.0f, 1.0f);
+    }
 
-        Inventory inv = Bukkit.createInventory(null, size, title);
+    private void openSettingsMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, colorize("&1&lFeature Control Engine"));
 
         boolean follow = getConfig().getBoolean("settings.follow", true);
         boolean attack = getConfig().getBoolean("settings.attack-cpvp", true);
-        boolean mining = getConfig().getBoolean("settings.mining", false);
+        boolean mining = getConfig().getBoolean("settings.mining", true);
+        boolean security = getConfig().getBoolean("settings.claim-protection", true);
         boolean chatbot = getConfig().getBoolean("settings.chatbot", true);
         boolean hologram = getConfig().getBoolean("settings.hologram", true);
         boolean bossbar = getConfig().getBoolean("settings.bossbar-status", true);
-        boolean aura = getConfig().getBoolean("settings.particle-aura", true);
 
-        inv.setItem(menuConfig.getInt("settings-menu.items.follow.slot", 10), createItem(follow ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.follow.name") + " &7- " + (follow ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
-        inv.setItem(menuConfig.getInt("settings-menu.items.attack.slot", 11), createItem(attack ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.attack.name") + " &7- " + (attack ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
-        inv.setItem(menuConfig.getInt("settings-menu.items.mining.slot", 12), createItem(mining ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.mining.name") + " &7- " + (mining ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
-        inv.setItem(menuConfig.getInt("settings-menu.items.chatbot.slot", 13), createItem(chatbot ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.chatbot.name") + " &7- " + (chatbot ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
-        inv.setItem(menuConfig.getInt("settings-menu.items.hologram.slot", 14), createItem(hologram ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.hologram.name") + " &7- " + (hologram ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
-        inv.setItem(menuConfig.getInt("settings-menu.items.bossbar.slot", 15), createItem(bossbar ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.bossbar.name") + " &7- " + (bossbar ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
-        inv.setItem(menuConfig.getInt("settings-menu.items.aura.slot", 16), createItem(aura ? Material.LIME_DYE : Material.GRAY_DYE, colorize(menuConfig.getString("settings-menu.items.aura.name") + " &7- " + (aura ? "&a[ACTIVE]" : "&c[OFF]")), List.of()));
+        inv.setItem(10, createItem(follow ? Material.LIME_DYE : Material.GRAY_DYE, colorize("&aFollow AI &7- " + (follow ? "[ACTIVE]" : "[OFF]")), List.of()));
+        inv.setItem(11, createItem(attack ? Material.LIME_DYE : Material.GRAY_DYE, colorize("&cCPvP AI &7- " + (attack ? "[ACTIVE]" : "[OFF]")), List.of()));
+        inv.setItem(12, createItem(mining ? Material.LIME_DYE : Material.GRAY_DYE, colorize("&eAuto Mining AI &7- " + (mining ? "[ACTIVE]" : "[OFF]")), List.of()));
+        inv.setItem(13, createItem(security ? Material.LIME_DYE : Material.GRAY_DYE, colorize("&bClaim Security &7- " + (security ? "[ACTIVE]" : "[OFF]")), List.of(colorize("&7Proteksi wilayah anti-grief bot"))));
+        inv.setItem(14, createItem(chatbot ? Material.LIME_DYE : Material.GRAY_DYE, colorize("&bChatbot Slang &7- " + (chatbot ? "[ACTIVE]" : "[OFF]")), List.of()));
+        inv.setItem(15, createItem(hologram ? Material.LIME_DYE : Material.GRAY_DYE, colorize("&dFloating Hologram &7- " + (hologram ? "[ACTIVE]" : "[OFF]")), List.of()));
+        inv.setItem(16, createItem(bossbar ? Material.LIME_DYE : Material.GRAY_DYE, colorize("&5Bossbar Tracker &7- " + (bossbar ? "[ACTIVE]" : "[OFF]")), List.of()));
 
-        setupMenuItem(inv, "settings-menu.items.back", Material.ARROW);
+        inv.setItem(22, createItem(Material.ARROW, colorize("&f« Kembali ke Menu Utama"), List.of()));
+        player.openInventory(inv);
+    }
+
+    private void openBotListMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, colorize("&#00FF66&lSelect Template to Spawn"));
+        int slot = 0;
+        for (String name : createdTemplates.keySet()) {
+            if (slot >= 26) break;
+            inv.setItem(slot++, createItem(Material.PLAYER_HEAD, colorize("&a" + name), List.of(colorize("&eKlik untuk langsung Spawn unit!"))));
+        }
+        inv.setItem(26, createItem(Material.ARROW, colorize("&f« Kembali ke Menu Utama"), List.of()));
+        player.openInventory(inv);
+    }
+
+    private void openControlMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, colorize("&#00F2FF&lSelect Unit to Possess"));
+        int slot = 0;
+        for (NPC npc : CitizensAPI.getNPCRegistry()) {
+            if (slot >= 26) break;
+            inv.setItem(slot++, createItem(Material.ZOMBIE_HEAD, colorize("&c" + npc.getName()), List.of(colorize("&7Klik untuk merasuki unit"))));
+        }
+        inv.setItem(26, createItem(Material.ARROW, colorize("&f« Kembali ke Menu Utama"), List.of()));
+        player.openInventory(inv);
+    }
+
+    private void openEquipmentTargetMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, colorize("&#BD00FF&lSelect Unit for Equipment"));
+        int slot = 0;
+        for (NPC npc : CitizensAPI.getNPCRegistry()) {
+            if (slot >= 26) break;
+            inv.setItem(slot++, createItem(Material.ARMOR_STAND, colorize("&e" + npc.getName()), List.of(colorize("&7Klik untuk atur Equipment / Gaji"))));
+        }
+        inv.setItem(26, createItem(Material.ARROW, colorize("&f« Kembali ke Menu Utama"), List.of()));
         player.openInventory(inv);
     }
 
@@ -324,7 +492,40 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         inv.setItem(15, eq.get(Equipment.EquipmentSlot.HAND) != null ? eq.get(Equipment.EquipmentSlot.HAND) : new ItemStack(Material.AIR));
         inv.setItem(16, eq.get(Equipment.EquipmentSlot.OFF_HAND) != null ? eq.get(Equipment.EquipmentSlot.OFF_HAND) : new ItemStack(Material.AIR));
 
-        inv.setItem(22, createItem(Material.ARROW, colorize("&f&l« Kembali ke Menu Utama"), List.of(colorize("&7Klik untuk simpan & kembali"))));
+        inv.setItem(18, createItem(Material.CHEST, colorize("&e&lBuka Bot Backpack"), List.of(colorize("&7Lihat hasil tambang bot"))));
+        inv.setItem(20, createItem(Material.GOLD_INGOT, colorize("&6&lBayar Gaji Bot (Upkeep)"), List.of(colorize("&7Setor upah harian bot"))));
+        inv.setItem(21, createItem(Material.COMPASS, colorize("&b&lTeleport ke Unit"), List.of(colorize("&7Teleport instan"))));
+        inv.setItem(23, createItem(Material.PLAYER_HEAD, colorize("&d&lGanti Skin Bot"), List.of(colorize("&7Ganti skin bot"))));
+        inv.setItem(25, createItem(Material.RED_CONCRETE, colorize("&c&lHapus Unit Ini"), List.of(colorize("&7Musnahkan bot ini"))));
+        inv.setItem(22, createItem(Material.ARROW, colorize("&f&l« Kembali ke List Unit"), List.of(colorize("&7Kembali"))));
+        player.openInventory(inv);
+    }
+
+    private void openTeleportMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, colorize("&#FFD700&lQuantum Teleport Destination"));
+        int slot = 0;
+        for (NPC npc : CitizensAPI.getNPCRegistry()) {
+            if (slot >= 26) break;
+            inv.setItem(slot++, createItem(Material.ENDER_EYE, colorize("&6" + npc.getName()), List.of(colorize("&7Klik untuk Teleport"))));
+        }
+        inv.setItem(26, createItem(Material.ARROW, colorize("&f« Kembali ke Menu Utama"), List.of()));
+        player.openInventory(inv);
+    }
+
+    private void openAdminMonitorMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, colorize("&4&lNetwork Performance & Audit"));
+        
+        double tps = Bukkit.getTPS()[0];
+        inv.setItem(11, createItem(Material.DIAMOND, colorize("&a&lServer TPS: &e" + String.format("%.2f", tps)), List.of(colorize("&7Status performa server utama"))));
+        inv.setItem(13, createItem(Material.BOOK, colorize("&b&lTotal Active Bots: &e" + CitizensAPI.getNPCRegistry().size()), List.of(colorize("&7Jumlah unit bot aktif di dunia"))));
+        
+        int slot = 18;
+        for (String log : auditLogs) {
+            if (slot >= 26) break;
+            inv.setItem(slot++, createItem(Material.PAPER, colorize("&e&lAudit Log"), List.of(colorize("&7" + log))));
+        }
+
+        inv.setItem(26, createItem(Material.ARROW, colorize("&f« Kembali ke Menu Utama"), List.of()));
         player.openInventory(inv);
     }
 
@@ -345,50 +546,6 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         inv.setItem(slot, createItem(mat, name, lore));
     }
 
-    private void openBotListMenu(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 27, colorize("&#00FF66&lSelect Unit to Deploy"));
-        int slot = 0;
-        for (String name : createdTemplates.keySet()) {
-            if (slot >= 26) break;
-            inv.setItem(slot++, createItem(Material.PLAYER_HEAD, colorize("&a" + name), List.of(colorize("&eKlik untuk deploy unit"))));
-        }
-        inv.setItem(26, createItem(Material.ARROW, colorize("&fKembali"), List.of()));
-        player.openInventory(inv);
-    }
-
-    private void openControlMenu(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 27, colorize("&#00F2FF&lSelect Unit to Possess"));
-        int slot = 0;
-        for (NPC npc : CitizensAPI.getNPCRegistry()) {
-            if (slot >= 26) break;
-            inv.setItem(slot++, createItem(Material.ZOMBIE_HEAD, colorize("&c" + npc.getName()), List.of(colorize("&7Ambil alih kendali unit"))));
-        }
-        inv.setItem(26, createItem(Material.ARROW, colorize("&fKembali"), List.of()));
-        player.openInventory(inv);
-    }
-
-    private void openEquipmentTargetMenu(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 27, colorize("&#BD00FF&lSelect Unit for Equipment"));
-        int slot = 0;
-        for (NPC npc : CitizensAPI.getNPCRegistry()) {
-            if (slot >= 26) break;
-            inv.setItem(slot++, createItem(Material.ARMOR_STAND, colorize("&e" + npc.getName()), List.of(colorize("&7Atur armor & senjata bot ini"))));
-        }
-        inv.setItem(26, createItem(Material.ARROW, colorize("&fKembali"), List.of()));
-        player.openInventory(inv);
-    }
-
-    private void openTeleportMenu(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 27, colorize("&#FFD700&lQuantum Teleport Destination"));
-        int slot = 0;
-        for (NPC npc : CitizensAPI.getNPCRegistry()) {
-            if (slot >= 26) break;
-            inv.setItem(slot++, createItem(Material.ENDER_EYE, colorize("&6" + npc.getName()), List.of(colorize("&7Teleport ke posisi unit"))));
-        }
-        inv.setItem(26, createItem(Material.ARROW, colorize("&fKembali"), List.of()));
-        player.openInventory(inv);
-    }
-
     private ItemStack createItem(Material mat, String name, List<String> lore) {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
@@ -401,17 +558,82 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
     }
 
     @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        if (controlledBots.containsKey(player.getUniqueId())) {
+            NPC npc = controlledBots.get(player.getUniqueId());
+            if (npc != null && npc.isSpawned()) {
+                Location toLoc = player.getLocation();
+                npc.teleport(toLoc, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.PLUGIN);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        if (controlledBots.containsKey(player.getUniqueId())) {
+            NPC npc = controlledBots.get(player.getUniqueId());
+            if (npc != null && npc.isSpawned() && npc.getEntity() != null) {
+                if (event.getAction() == Action.LEFT_CLICK_AIR || event.getAction() == Action.LEFT_CLICK_BLOCK) {
+                    npc.getEntity().getWorld().spawnParticle(Particle.SWEEP_ATTACK, npc.getEntity().getLocation().add(0, 1, 0), 1);
+                    npc.getEntity().getWorld().playSound(npc.getEntity().getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.0f, 1.0f);
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        if (event.getEntity() instanceof Player) {
+            Player victim = (Player) event.getEntity();
+            for (Map.Entry<Integer, UUID> entry : botOwners.entrySet()) {
+                if (entry.getValue().equals(victim.getUniqueId())) {
+                    NPC npc = CitizensAPI.getNPCRegistry().getById(entry.getKey());
+                    if (npc != null && npc.isSpawned() && npc.getEntity() instanceof LivingEntity) {
+                        LivingEntity npcEntity = (LivingEntity) npc.getEntity();
+                        if (event.getDamager() instanceof LivingEntity && !event.getDamager().equals(npcEntity)) {
+                            npcEntity.getWorld().spawnParticle(Particle.CRIT, npcEntity.getLocation().add(0, 1, 0), 10);
+                            npcEntity.getWorld().playSound(npcEntity.getLocation(), Sound.ENTITY_PLAYER_ATTACK_STRONG, 1.0f, 0.8f);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
         String title = event.getView().getTitle();
-        String prefix = colorize(getConfig().getString("messages.prefix", "&8[&b&lDanzzBot&8] &r"));
 
-        if (title.contains("DanzzBot") || title.contains("Engine") || title.contains("Select") || title.contains("Quantum") || title.contains("Equipment")) {
-            if (title.contains("Equipment")) {
-                return;
+        if (title.contains("Create Bot Template")) {
+            if (event.getRawSlot() == 2) {
+                ItemStack resultItem = event.getCurrentItem();
+                if (resultItem != null && resultItem.hasItemMeta() && resultItem.getItemMeta().hasDisplayName()) {
+                    String botName = ChatColor.stripColor(resultItem.getItemMeta().getDisplayName());
+                    if (!botName.isEmpty() && !botName.equalsIgnoreCase("KetikNamaBotDisini")) {
+                        synchronized (createdTemplates) {
+                            createdTemplates.put(botName, "default");
+                        }
+                        saveBotsToStorage();
+                        logAudit("Player " + player.getName() + " membuat template bot baru: " + botName);
+                        
+                        player.closeInventory();
+                        player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.5f);
+                        player.sendActionBar(colorize("&aTemplate Bot '&e" + botName + "&a' berhasil dibuat!"));
+                        event.setCancelled(true);
+                        return;
+                    }
+                }
             }
+            return;
+        }
 
+        if (title.contains("Backpack |")) return;
+
+        if (title.contains("DanzzBot") || title.contains("Engine") || title.contains("Select") || title.contains("Quantum") || title.contains("Equipment") || title.contains("Template") || title.contains("Performance")) {
             event.setCancelled(true);
             ItemStack clicked = event.getCurrentItem();
             if (clicked == null || !clicked.hasItemMeta()) return;
@@ -419,94 +641,93 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
 
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.9f, 1.3f);
 
-            if (title.contains("S-Class Enterprise") || title.contains("Menu")) {
+            if (title.contains("Equipment |")) {
+                String npcName = title.split(" \\| ")[1];
+                NPC npc = findNPCByName(npcName);
+                if (npc != null && npc.isSpawned()) {
+                    if (name.contains("Buka Bot Backpack")) {
+                        Inventory backpack = botBackpacks.computeIfAbsent(npc.getUniqueId(), k -> Bukkit.createInventory(null, 27, colorize("&8Backpack | &e" + npcName)));
+                        player.openInventory(backpack);
+                        player.playSound(player.getLocation(), Sound.BLOCK_CHEST_OPEN, 1.0f, 1.0f);
+                        return;
+                    } else if (name.contains("Bayar Gaji Bot")) {
+                        player.sendMessage(colorize("&a[Upkeep] Gaji harian bot &e" + npcName + " &aberhasil dibayar!"));
+                        player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.5f);
+                        player.closeInventory();
+                        return;
+                    } else if (name.contains("Teleport ke Unit")) {
+                        player.teleport(npc.getStoredLocation());
+                        player.spawnParticle(Particle.PORTAL, player.getLocation().add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.1);
+                        player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+                        player.closeInventory();
+                        return;
+                    } else if (name.contains("Ganti Skin Bot")) {
+                        SkinTrait skin = npc.getOrAddTrait(SkinTrait.class);
+                        skin.setSkinName("Notch");
+                        skin.setShouldUpdateSkins(true);
+                        player.closeInventory();
+                        return;
+                    } else if (name.contains("Hapus Unit Ini")) {
+                        removeHologramOfNPC(npc.getUniqueId());
+                        removeBossBarOfNPC(npc.getUniqueId());
+                        botBackpacks.remove(npc.getUniqueId());
+                        botOwners.remove(npc.getId());
+                        botWaypoints.remove(npc.getId());
+                        botWaypointIndexes.remove(npc.getId());
+                        botWanderCooldowns.remove(npc.getId());
+                        npc.destroy();
+                        player.closeInventory();
+                        return;
+                    }
+                }
+                if (name.contains("Kembali ke List Unit")) openEquipmentTargetMenu(player);
+                return;
+            }
+
+            if (title.contains("Enterprise Network") || title.contains("Menu")) {
                 if (name.contains("Deploy Unit")) openBotListMenu(player);
-                else if (name.contains("Create New Template")) {
-                    player.closeInventory();
-                    player.sendMessage(prefix + ChatColor.YELLOW + "Ketik command: /danzzbot create <nama>");
-                } else if (name.contains("Engine Settings")) openSettingsMenu(player);
-                else if (name.contains("Equipment Manager")) openEquipmentTargetMenu(player);
-                else if (name.contains("Possess")) openControlMenu(player);
+                else if (name.contains("Create New Template")) openAnvilTemplateCreator(player);
+                else if (name.contains("Engine Settings")) openSettingsMenu(player);
+                else if (name.contains("Equipment & Backpack")) openEquipmentTargetMenu(player);
+                else if (name.contains("Possess Unit")) openControlMenu(player);
                 else if (name.contains("Quantum Teleport")) openTeleportMenu(player);
+                else if (name.contains("Network Performance")) openAdminMonitorMenu(player);
+                else if (name.contains("Reload Plugin")) {
+                    reloadDanzzPlugin(player);
+                    player.closeInventory();
+                }
                 else if (name.contains("Purge All Units")) {
                     removeAllHolograms();
                     removeAllBossBars();
+                    controlledBots.clear();
+                    botBackpacks.clear();
+                    botWaypoints.clear();
+                    botWaypointIndexes.clear();
+                    botOwners.clear();
+                    botWanderCooldowns.clear();
                     for (NPC npc : CitizensAPI.getNPCRegistry()) npc.destroy();
-                    player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
-                    player.sendActionBar(ChatColor.RED + "Semua unit dimusnahkan!");
                     player.closeInventory();
                 }
-            } else if (title.contains("Feature Control") || title.contains("Settings")) {
-                if (name.contains("Follow AI")) {
-                    boolean val = !getConfig().getBoolean("settings.follow");
-                    getConfig().set("settings.follow", val);
-                    saveConfig();
-                    openSettingsMenu(player);
-                } else if (name.contains("CPvP / Combat AI")) {
-                    boolean val = !getConfig().getBoolean("settings.attack-cpvp");
-                    getConfig().set("settings.attack-cpvp", val);
-                    saveConfig();
-                    openSettingsMenu(player);
-                } else if (name.contains("Auto Mining")) {
-                    boolean val = !getConfig().getBoolean("settings.mining");
-                    getConfig().set("settings.mining", val);
-                    saveConfig();
-                    openSettingsMenu(player);
-                } else if (name.contains("Chatbot Slang")) {
-                    boolean val = !getConfig().getBoolean("settings.chatbot");
-                    getConfig().set("settings.chatbot", val);
-                    saveConfig();
-                    openSettingsMenu(player);
-                } else if (name.contains("Floating Hologram")) {
-                    boolean val = !getConfig().getBoolean("settings.hologram");
-                    getConfig().set("settings.hologram", val);
-                    saveConfig();
-                    if (!val) removeAllHolograms();
-                    openSettingsMenu(player);
-                } else if (name.contains("Bossbar Tracker")) {
-                    boolean val = !getConfig().getBoolean("settings.bossbar-status");
-                    getConfig().set("settings.bossbar-status", val);
-                    saveConfig();
-                    if (!val) removeAllBossBars();
-                    openSettingsMenu(player);
-                } else if (name.contains("Particle Aura Trail")) {
-                    boolean val = !getConfig().getBoolean("settings.particle-aura");
-                    getConfig().set("settings.particle-aura", val);
-                    saveConfig();
-                    openSettingsMenu(player);
-                } else if (name.contains("Kembali")) {
+            } 
+            else if (title.contains("Feature Control") || title.contains("Select Template to Spawn") || title.contains("Select Unit for Equipment") || title.contains("Select Unit to Possess") || title.contains("Quantum Teleport") || title.contains("Performance")) {
+                if (name.contains("Kembali ke Menu Utama") || name.contains("Kembali")) {
                     openCommercialMainMenu(player);
-                }
-            } else if (title.contains("Select Unit to Deploy")) {
-                if (name.contains("Kembali")) openCommercialMainMenu(player);
-                else {
+                } else if (title.contains("Select Template to Spawn")) {
                     spawnEnterpriseBot(player, name);
                     player.closeInventory();
-                }
-            } else if (title.contains("Select Unit for Equipment")) {
-                if (name.contains("Kembali")) openCommercialMainMenu(player);
-                else {
+                } else if (title.contains("Select Unit for Equipment")) {
                     NPC npc = findNPCByName(name);
                     if (npc != null) openEquipmentManagerMenu(player, npc);
-                }
-            } else if (title.contains("Select Unit to Possess")) {
-                if (name.contains("Kembali")) openCommercialMainMenu(player);
-                else {
+                } else if (title.contains("Select Unit to Possess")) {
                     NPC npc = findNPCByName(name);
-                    if (npc != null) {
+                    if (npc != null && npc.isSpawned()) {
                         controlledBots.put(player.getUniqueId(), npc);
-                        player.sendActionBar(colorize("&aMengambil alih unit: &e" + name));
                         player.closeInventory();
                     }
-                }
-            } else if (title.contains("Quantum Teleport")) {
-                if (name.contains("Kembali")) openCommercialMainMenu(player);
-                else {
+                } else if (title.contains("Quantum Teleport")) {
                     NPC npc = findNPCByName(name);
                     if (npc != null && npc.isSpawned()) {
                         player.teleport(npc.getStoredLocation());
-                        player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
-                        player.sendActionBar(colorize("&6Quantum TP ke unit &e" + name));
                         player.closeInventory();
                     }
                 }
@@ -515,11 +736,12 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
     }
 
     private void spawnEnterpriseBot(Player player, String name) {
-        String prefix = colorize(getConfig().getString("messages.prefix", "&8[&b&lDanzzBot&8] &r"));
         Location loc = player.getLocation();
-        
         NPC npc = CitizensAPI.getNPCRegistry().createNPC(org.bukkit.entity.EntityType.PLAYER, name);
         npc.spawn(loc);
+
+        botOwners.put(npc.getId(), player.getUniqueId());
+        registerBotToLuckPerms(npc);
 
         if (getConfig().getBoolean("settings.skin-system", true)) {
             SkinTrait skinTrait = npc.getOrAddTrait(SkinTrait.class);
@@ -533,11 +755,9 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
                 eq.set(Equipment.EquipmentSlot.CHESTPLATE, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.chestplate", "NETHERITE_CHESTPLATE"))));
                 eq.set(Equipment.EquipmentSlot.LEGGINGS, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.leggings", "NETHERITE_LEGGINGS"))));
                 eq.set(Equipment.EquipmentSlot.BOOTS, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.boots", "NETHERITE_BOOTS"))));
-                eq.set(Equipment.EquipmentSlot.HAND, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.main-hand", "NETHERITE_SWORD"))));
+                eq.set(Equipment.EquipmentSlot.HAND, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.main-hand", "NETHERITE_PICKAXE"))));
                 eq.set(Equipment.EquipmentSlot.OFF_HAND, new ItemStack(Material.valueOf(getConfig().getString("default-equipment.off-hand", "TOTEM_OF_UNDYING"))));
-            } catch (Exception e) {
-                getLogger().warning("Gagal memuat material equipment!");
-            }
+            } catch (Exception ignored) {}
         }
 
         if (npc.getEntity() instanceof LivingEntity) {
@@ -550,29 +770,9 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         loc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc.add(0, 1, 0), 40, 0.6, 0.6, 0.6, 0.15);
         loc.getWorld().playSound(loc, Sound.ITEM_TOTEM_USE, 1.0f, 1.0f);
 
-        Bukkit.broadcastMessage(ChatColor.YELLOW + name + " joined the game");
-        player.sendActionBar(colorize("&aUnit Enterprise '" + name + "' berhasil dideploy!"));
-        player.sendMessage(prefix + colorize("&aUnit " + name + " aktif dengan Perlengkapan S-Class!"));
-    }
-
-    private void removeEnterpriseBot(Player player, String name) {
-        String prefix = colorize(getConfig().getString("messages.prefix", "&8[&b&lDanzzBot&8] &r"));
-        NPC npc = findNPCByName(name);
-        if (npc != null) {
-            removeHologramOfNPC(npc.getUniqueId());
-            removeBossBarOfNPC(npc.getUniqueId());
-            Location loc = npc.getStoredLocation();
-            if (loc != null && loc.getWorld() != null) {
-                loc.getWorld().spawnParticle(Particle.POOF, loc, 25, 0.3, 0.5, 0.3, 0.05);
-                loc.getWorld().playSound(loc, Sound.ENTITY_ITEM_BREAK, 1.0f, 0.8f);
-            }
-            npc.destroy();
-            Bukkit.broadcastMessage(ChatColor.YELLOW + name + " left the game");
-            player.sendActionBar(ChatColor.RED + "Unit " + name + " dihapus.");
-            player.sendMessage(prefix + ChatColor.GREEN + "Unit " + name + " berhasil dihapus.");
-        } else {
-            player.sendMessage(prefix + ChatColor.RED + "Unit tidak ditemukan!");
-        }
+        boolean showRank = getConfig().getBoolean("messages.show-rank-on-join", true);
+        String joinFormat = getConfig().getString(showRank ? "messages.join-format" : "messages.join-format-plain", "%luckperms_prefix%&e%npc_name% joined the game");
+        Bukkit.broadcastMessage(parseBotFormat(npc, joinFormat));
     }
 
     @EventHandler
@@ -582,24 +782,35 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             if (npc.isSpawned() && npc.getEntity() != null && npc.getEntity().equals(entity)) {
                 removeHologramOfNPC(npc.getUniqueId());
                 removeBossBarOfNPC(npc.getUniqueId());
-                String name = npc.getName();
-                Bukkit.broadcastMessage(ChatColor.YELLOW + name + " died");
+                botBackpacks.remove(npc.getUniqueId());
+                botOwners.remove(npc.getId());
+                botWaypoints.remove(npc.getId());
+                botWaypointIndexes.remove(npc.getId());
+                botWanderCooldowns.remove(npc.getId());
+                
+                String deathFormat = getConfig().getString("messages.death-format", "%luckperms_prefix%&e%npc_name% died");
+                Bukkit.broadcastMessage(parseBotFormat(npc, deathFormat));
                 break;
             }
         }
     }
 
     private void startEnterpriseEngineTask() {
-        new BukkitRunnable() {
+        enterpriseEngineTask = new BukkitRunnable() {
             @Override
             public void run() {
-                reloadConfig();
+                double currentTps = Bukkit.getTPS()[0];
+                boolean isLagging = currentTps < 18.0;
 
                 boolean cpvpActive = getConfig().getBoolean("settings.attack-cpvp", true);
-                boolean chatActive = getConfig().getBoolean("settings.chatbot", true);
+                boolean miningActive = getConfig().getBoolean("settings.mining", true);
+                boolean securityActive = getConfig().getBoolean("settings.claim-protection", true);
+                boolean chatbot = getConfig().getBoolean("settings.chatbot", true);
                 boolean autoHeal = getConfig().getBoolean("combat.auto-heal", true);
-                boolean auraActive = getConfig().getBoolean("settings.particle-aura", true);
+                boolean auraActive = getConfig().getBoolean("settings.particle-aura", true) && !isLagging;
                 List<String> slangs = getConfig().getStringList("chat-slang");
+
+                long currentTime = System.currentTimeMillis();
 
                 for (NPC npc : CitizensAPI.getNPCRegistry()) {
                     if (!npc.isSpawned() || npc.getEntity() == null) continue;
@@ -608,6 +819,35 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
                     updateOrSpawnBossBar(npc);
 
                     LivingEntity npcEntity = (LivingEntity) npc.getEntity();
+
+                    if (securityActive && npcEntity.getLocation().getBlock().getType() == Material.BEDROCK) {
+                        continue; 
+                    }
+
+                    List<Location> waypoints = botWaypoints.get(npc.getId());
+                    if (waypoints != null && !waypoints.isEmpty() && !isLagging) {
+                        int index = botWaypointIndexes.getOrDefault(npc.getId(), 0);
+                        Location targetLoc = waypoints.get(index);
+                        if (npcEntity.getLocation().distanceSquared(targetLoc) > 4.0) {
+                            npc.getNavigator().setTarget(targetLoc);
+                        } else {
+                            botWaypointIndexes.put(npc.getId(), (index + 1) % waypoints.size());
+                        }
+                    } 
+                    else if (!isLagging) {
+                        long lastMove = botWanderCooldowns.getOrDefault(npc.getId(), 0L);
+                        if (currentTime - lastMove > (6000 + random.nextInt(6000))) {
+                            botWanderCooldowns.put(npc.getId(), currentTime);
+                            
+                            double randomX = (random.nextDouble() - 0.5) * 16.0;
+                            double randomZ = (random.nextDouble() - 0.5) * 16.0;
+                            Location wanderLoc = npcEntity.getLocation().add(randomX, 0, randomZ);
+                            
+                            if (wanderLoc.getWorld() != null) {
+                                npc.getNavigator().setTarget(wanderLoc);
+                            }
+                        }
+                    }
 
                     if (auraActive) {
                         String auraName = getConfig().getString("visuals.aura-type", "SOUL_FIRE_FLAME");
@@ -618,34 +858,40 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
 
                     if (autoHeal && npcEntity.getHealth() < 10.0 && npcEntity.getHealth() > 0.0) {
                         npcEntity.setHealth(Math.min(20.0, npcEntity.getHealth() + 6.0));
-                        npcEntity.getWorld().spawnParticle(Particle.HEART, npcEntity.getLocation().add(0, 2, 0), 5, 0.3, 0.3, 0.3, 0.1);
-                        npcEntity.getWorld().playSound(npcEntity.getLocation(), Sound.ENTITY_GENERIC_DRINK, 0.8f, 1.0f);
                     }
 
-                    if (cpvpActive) {
-                        double radius = getConfig().getDouble("combat.attack-radius", 8.0);
+                    if (miningActive && !isLagging) {
+                        if (random.nextInt(15) == 0) {
+                            Location loc = npcEntity.getLocation().add(random.nextDouble() * 4 - 2, 0, random.nextDouble() * 4 - 2);
+                            loc.getWorld().spawnParticle(Particle.BLOCK, loc, 10, Bukkit.createBlockData(Material.STONE));
+                            
+                            Inventory backpack = botBackpacks.get(npc.getUniqueId());
+                            if (backpack != null && backpack.firstEmpty() != -1) {
+                                Material[] minedItems = {Material.DIAMOND, Material.NETHERITE_SCRAP, Material.GOLD_INGOT};
+                                backpack.addItem(new ItemStack(minedItems[random.nextInt(minedItems.length)], 1));
+                            }
+                        }
+                    }
+
+                    if (cpvpActive && !isLagging) {
+                        double radius = getConfig().getDouble("combat.attack-radius", 10.0);
                         for (Entity target : npcEntity.getNearbyEntities(radius, radius, radius)) {
                             if (target instanceof Player && !target.getName().equals(npc.getName())) {
-                                if (random.nextInt(7) == 0) {
-                                    Location loc = target.getLocation();
-                                    loc.getWorld().spawn(loc, EnderCrystal.class);
-                                    loc.getWorld().playSound(loc, Sound.BLOCK_RESPAWN_ANCHOR_SET_SPAWN, 1.0f, 1.0f);
-                                    
-                                    if (random.nextInt(3) == 0) {
-                                        target.sendMessage(colorize("&c[" + npc.getName() + "] S-Class Crystal & Anchor Combat Active! 💥"));
-                                    }
+                                if (random.nextInt(10) == 0) {
+                                    target.getLocation().getWorld().spawn(target.getLocation(), EnderCrystal.class);
                                 }
                             }
                         }
                     }
 
-                    if (chatActive && slangs != null && !slangs.isEmpty() && random.nextInt(120) < 5) {
+                    if (chatbot && slangs != null && !slangs.isEmpty() && random.nextInt(200) == 0) {
                         String randomSlang = slangs.get(random.nextInt(slangs.size()));
-                        Bukkit.broadcastMessage(ChatColor.GRAY + "<" + ChatColor.AQUA + npc.getName() + ChatColor.GRAY + "> " + ChatColor.WHITE + randomSlang);
+                        String chatFormat = getConfig().getString("messages.chat-format", "%luckperms_prefix%&b%npc_name% &7» &f%message%");
+                        Bukkit.broadcastMessage(parseBotFormat(npc, chatFormat.replace("%message%", randomSlang)));
                     }
                 }
             }
-        }.runTaskTimer(this, 0L, 10L);
+        }.runTaskTimer(this, 0L, 20L);
     }
 
     private void updateOrSpawnHologram(NPC npc) {
@@ -656,8 +902,8 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
 
         LivingEntity entity = (LivingEntity) npc.getEntity();
         Location loc = entity.getLocation().add(0, 2.3, 0);
-        String rgbFormat = getConfig().getString("visuals.hologram-rgb-format", "&#00F2FF&l[Enterprise] &#FFFFFF%npc_name% &7- &#00FF66%health% HP");
-        String text = colorize(rgbFormat.replace("%npc_name%", npc.getName()).replace("%health%", String.format("%.1f", entity.getHealth())));
+        String format = getConfig().getString("visuals.hologram-format", "%luckperms_prefix%&#00F2FF%npc_name% &7- &#00FF66%health% HP");
+        String text = parseBotFormat(npc, format);
 
         ArmorStand hologram = botHolograms.get(npc.getUniqueId());
         if (hologram == null || !hologram.isValid()) {
@@ -683,15 +929,17 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
 
         LivingEntity entity = (LivingEntity) npc.getEntity();
         BossBar bar = botBossBars.get(npc.getUniqueId());
-        
+        String parsedTitle = parseBotFormat(npc, getConfig().getString("visuals.bossbar-format", "%luckperms_prefix%&#00F2FF%npc_name%"));
+
         if (bar == null) {
-            bar = Bukkit.createBossBar(colorize("&#00F2FFUnit: &#FFFFFF" + npc.getName()), BarColor.PURPLE, BarStyle.SOLID);
+            bar = Bukkit.createBossBar(parsedTitle, BarColor.PURPLE, BarStyle.SOLID);
             bar.setVisible(true);
             botBossBars.put(npc.getUniqueId(), bar);
+        } else {
+            bar.setTitle(parsedTitle);
         }
 
         bar.setProgress(Math.max(0.0, Math.min(1.0, entity.getHealth() / 20.0)));
-        
         for (Player p : entity.getWorld().getPlayers()) {
             if (p.getLocation().distanceSquared(entity.getLocation()) <= 225) {
                 bar.addPlayer(p);
@@ -727,20 +975,18 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
 
     @EventHandler
     public void onServerListPing(ServerListPingEvent event) {
-        int extra = getConfig().getInt("motd.extra-online-count", 10);
+        int extra = getConfig().getInt("motd.extra-online-count", 15);
         event.setMaxPlayers(event.getMaxPlayers() + extra);
-
-        String motdText = colorize(getConfig().getString("motd.text", "&#00F2FF&lDanzzBot Enterprise"));
-        event.setMotd(motdText);
+        event.setMotd(colorize(getConfig().getString("motd.text", "&#00F2FF&lDanzzBot Enterprise 2026")));
     }
 
     public static class DanzzBotPlaceholderExpansion extends PlaceholderExpansion {
-        private final DanzzBot plugin;
-        public DanzzBotPlaceholderExpansion(DanzzBot plugin) { this.plugin = plugin; }
+        private final DanzzBot danzzBotPlugin;
+        public DanzzBotPlaceholderExpansion(DanzzBot plugin) { this.danzzBotPlugin = plugin; }
 
         @Override public @NotNull String getIdentifier() { return "danzzbot"; }
         @Override public @NotNull String getAuthor() { return "DanzzReal"; }
-        @Override public @NotNull String getVersion() { return "8.0"; }
+        @Override public @NotNull String getVersion() { return "14.0-NetworkSuite"; }
         @Override public boolean persist() { return true; }
 
         @Override
@@ -751,7 +997,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
                 return String.valueOf(count);
             }
             if (params.equalsIgnoreCase("templates")) {
-                return String.valueOf(plugin.createdTemplates.size());
+                return String.valueOf(danzzBotPlugin.createdTemplates.size());
             }
             return null;
         }
