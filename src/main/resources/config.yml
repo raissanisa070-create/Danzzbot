@@ -1,7 +1,12 @@
+# ==========================================
+# DanzzBot Enterprise Configuration File
+# ==========================================
+
 settings:
   follow: true
   attack-cpvp: true
-  mining: false
+  mining: true
+  claim-protection: true
   chatbot: true
   hologram: true
   bossbar-status: true
@@ -16,38 +21,42 @@ default-equipment:
   chestplate: "NETHERITE_CHESTPLATE"
   leggings: "NETHERITE_LEGGINGS"
   boots: "NETHERITE_BOOTS"
-  main-hand: "NETHERITE_SWORD"
+  main-hand: "NETHERITE_PICKAXE"
   off-hand: "TOTEM_OF_UNDYING"
 
-visuals:
-  aura-type: "SOUL_FIRE_FLAME"
-  aura-interval-ticks: 20
-  hologram-rgb-format: "&#00F2FF&l[Enterprise] &#FFFFFF%npc_name% &7- &#00FF66%health% HP"
-
 combat:
-  default-style: "CRYSTAL_PVP"
-  auto-totem: true
   auto-heal: true
-  attack-radius: 8.0
   resistance-amplifier: 1
+  attack-radius: 10.0
 
-messages:
-  prefix: "&8[&b&lDanzzBot Enterprise&8] &r"
-  bot-spawned: "&aBerhasil men-spawn unit: &e%bot_name%"
-  bot-removed: "&cUnit &e%bot_name% &ctelah dihapus."
+luckperms-rank:
+  enabled: true
+  default-rank-prefix: "&b[BOT] "
 
 motd:
-  text: "&#00F2FF&lDanzzBot Enterprise &7- &#00FF66Online &f| &#FFD700Paper 1.21"
-  hover-tooltip: "&eBot Aktif (%bot_count%):\n&f- DanzzBot Engine Enterprise Ready!\n&aCPvP, RGB Nametag & Smart AI Active!"
-  extra-online-count: 10
+  enabled: true
+  text: "&#00F2FF&lDanzzBot Enterprise Network 2026"
+  # Jika true, extra online count akan bertambah otomatis sebanyak bot yang aktif di server
+  dynamic-bot-count: true
+  # Angka tambahan statis (jika dynamic-bot-count false, atau sebagai bonus tambahan)
+  extra-online-count: 5
+
+visuals:
+  hologram-format: "%luckperms_prefix%&#00F2FF%npc_name% &7- &#00FF66%health% HP"
+  bossbar-format: "%luckperms_prefix%&#00F2FF%npc_name%"
+  aura-type: "SOUL_FIRE_FLAME"
+
+messages:
+  prefix: "&8[&b&lDanzzBot&8] &r"
+  show-rank-on-join: true
+  join-format: "%luckperms_prefix%&e%npc_name% bergabung ke server!"
+  join-format-plain: "&e%npc_name% bergabung ke server!"
+  death-format: "%luckperms_prefix%&c%npc_name% gugur dalam pertempuran!"
+  chat-format: "%luckperms_prefix%&b%npc_name% &7» &f%message%"
 
 chat-slang:
-  - "halo cuy"
-  - "Waduh sepong banget abangku yg satu ini 🗿"
-  - "Mental CPvP lu mana bro, melipir dlu aje wkwk 💀"
-  - "Sabar tod, gua lagi setup obsidian sm crystal dlu 🥶"
-  - "Gaya lu bro, mentang-mentang pake netherite 💅"
-  - "Ez bgt bro, cupu lu wkwkwk 🗿"
-  - "Mana musuhnya? Senggol dikit lgsung pecah crystalnya 💥"
-  - "cupu semua"
-  - "ayo ramein serve ini"
+  - "Woi, jangan rebutan mineral!"
+  - "Suhu, bantu aku bersihin area ini dong."
+  - "saya aktif dan siap tempur!"
+  - "Aman, TPS server tetap stabil!"
+  
