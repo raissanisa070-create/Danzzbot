@@ -38,7 +38,7 @@
             <artifactId>citizens-main</artifactId>
             <version>2.7.3-SNAPSHOT</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/libs/Citizens-2.0.44-b4268.jar</systemPath>
+            <systemPath>${project.basedir}/libs/Citizens-2.0.43-b4250.jar</systemPath>
         </dependency>
 
         <!-- PlaceholderAPI -->
