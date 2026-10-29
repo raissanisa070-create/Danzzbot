@@ -975,9 +975,30 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
 
     @EventHandler
     public void onServerListPing(ServerListPingEvent event) {
-        int extra = getConfig().getInt("motd.extra-online-count", 15);
-        event.setMaxPlayers(event.getMaxPlayers() + extra);
-        event.setMotd(colorize(getConfig().getString("motd.text", "&#00F2FF&lDanzzBot Enterprise 2026")));
+        if (!getConfig().getBoolean("motd.enabled", true)) return;
+
+        // Hitung berapa banyak NPC bot DanzzBot yang sedang aktif di dunia saat ini
+        int activeBotCount = 0;
+        for (NPC npc : CitizensAPI.getNPCRegistry()) {
+            if (npc.isSpawned()) {
+                activeBotCount++;
+            }
+        }
+
+        // Ambil pengaturan dari config
+        boolean dynamicCount = getConfig().getBoolean("motd.dynamic-bot-count", true);
+        int staticExtra = getConfig().getInt("motd.extra-online-count", 5);
+
+        // Jika dynamic aktif, jumlah extra online mengikuti jumlah bot aktif + bonus statis config
+        int totalExtra = dynamicCount ? (activeBotCount + staticExtra) : staticExtra;
+
+        // Terapkan ke Server List (MOTD)
+        event.setMaxPlayers(event.getMaxPlayers() + totalExtra);
+        event.setNumPlayers(event.getNumPlayers() + totalExtra); // Menambah angka pemain online di MOTD
+        
+        String motdText = getConfig().getString("motd.text", "&#00F2FF&lDanzzBot Enterprise Network 2026");
+        event.setMotd(colorize(motdText));
+    }
     }
 
     public static class DanzzBotPlaceholderExpansion extends PlaceholderExpansion {
