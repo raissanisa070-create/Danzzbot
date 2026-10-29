@@ -217,7 +217,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         if (sender instanceof Player) {
             Player p = (Player) sender;
             p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.8f);
-            player.sendActionBar(net.kyori.adventure.text.Component.text(colorize("&a⚡ Reload Berhasil!")));
+            player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, new net.md_5.bungee.api.chat.TextComponent(colorize("&a⚡ Reload Berhasil!")));
         }
     }
 
@@ -372,7 +372,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
                 }
                 logAudit("Admin " + player.getName() + " memusnahkan seluruh unit bot (" + count + ").");
                 player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
-                player.sendActionBar(net.kyori.adventure.text.Component.text(colorize("&a⚡ Penghapusan Berhasil!")));
+                player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, new net.md_5.bungee.api.chat.TextComponent(colorize("&a⚡ Pengahapusan Berhasil!")));
                 player.sendMessage(prefix + ChatColor.GREEN + "Seluruh bot berhasil dibersihkan!");
                 break;
 
@@ -512,18 +512,18 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         player.openInventory(inv);
     }
 
-    private void openAdminMonitorMenu(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 27, colorize("&4&lNetwork Performance & Audit"));
-        
+        private void openAdminMonitorMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, colorize("&8Admin Monitor"));
+
         double currentTps = 20.0;
-try {
-    double[] tps = Bukkit.getTPS();
-    if (tps != null && tps.length > 0) {
-        currentTps = tps[0];
-    }
-} catch (Exception ignored) {}
-        
-        // Hitung total bot aman tanpa error method size()
+        try {
+            double[] tpsList = Bukkit.getServer().getTPS();
+            if (tpsList != null && tpsList.length > 0) {
+                currentTps = tpsList[0];
+            }
+        } catch (Exception ignored) {}
+
+        // Hitung total bot aman tanpa error
         int totalBots = 0;
         for (NPC ignored : CitizensAPI.getNPCRegistry()) {
             totalBots++;
@@ -635,7 +635,7 @@ try {
                         
                         player.closeInventory();
                         player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.5f);
-                        player.sendActionBar(net.kyori.adventure.text.Component.text(colorize("&aTemplate Bot '&e" + botName + "&a' berhasil dibuat!")));
+                        player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, new net.md_5.bungee.api.chat.TextComponent(colorize("&aTemplate Bot '&e" + botName + "&a' berhasil dibuat!")));
                         event.setCancelled(true);
                         return;
                     }
