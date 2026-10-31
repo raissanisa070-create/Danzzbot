@@ -217,7 +217,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         if (sender instanceof Player) {
             Player p = (Player) sender;
             p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.8f);
-            player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, new net.md_5.bungee.api.chat.TextComponent(colorize("&a⚡ Reload Berhasil!")));
+            p.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, new net.md_5.bungee.api.chat.TextComponent(colorize("&a⚡ Reload Berhasil!")));
         }
     }
 
@@ -526,16 +526,16 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             totalBots++;
         }
             
-        inv.setItem(11, createItem(Material.DIAMOND, colorize("&a&lServer TPS: &e" + String.format("%.2f", tps)), List.of(colorize("&7Status performa server utama"))));
-        inv.setItem(13, createItem(Material.BOOK, colorize("&b&lTotal Active Bots: &e" + totalBots), List.of(colorize("&7Jumlah unit bot aktif di dunia"))));
-        
+        inv.setItem(11, createItem(Material.DIAMOND_BLOCK, colorize("&bTPS Status"), List.of(colorize("&7Current TPS: " + String.format("%.2f", currentTps)))));
+        inv.setItem(13, createItem(Material.PLAYER_HEAD, colorize("&eTotal Bots"), List.of(colorize("&7Jumlah unit bot: &f" + totalBots))));
+
         int slot = 18;
         for (String log : auditLogs) {
             if (slot >= 26) break;
-            inv.setItem(slot++, createItem(Material.PAPER, colorize("&e&lAudit Log"), List.of(colorize("&7" + log))));
+            inv.setItem(slot++, createItem(Material.PAPER, colorize("&fAudit Log"), List.of(colorize("&7" + log))));
         }
 
-        inv.setItem(26, createItem(Material.ARROW, colorize("&f« Kembali ke Menu Utama"), List.of()));
+        inv.setItem(26, createItem(Material.BARRIER, colorize("&cClose"), List.of(colorize("&7Klik untuk menutup"))));
         player.openInventory(inv);
     }
 
@@ -809,7 +809,13 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         enterpriseEngineTask = new BukkitRunnable() {
             @Override
             public void run() {
-                double currentTps = Bukkit.getTPS()[0];
+                double currentTps = 20.0;
+try {
+    double[] tpsList = Bukkit.getServer().getTPS();
+    if (tpsList != null && tpsList.length > 0) {
+        currentTps = tpsList[0];
+    }
+} catch (Exception ignored) {}
                 boolean isLagging = currentTps < 18.0;
 
                 boolean cpvpActive = getConfig().getBoolean("settings.attack-cpvp", true);
