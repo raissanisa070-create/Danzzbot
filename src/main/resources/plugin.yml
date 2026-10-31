@@ -1,6 +1,6 @@
 name: DanzzBot
 version: 14.0-NetworkSuite
-main: com.danzz.danzzbot.DanzzBot
+main: com.danzzreal.danzzbot.DanzzBot
 api-version: 1.20
 depend: [Citizens]
 softdepend: [LuckPerms, PlaceholderAPI]
