@@ -2,11 +2,20 @@ name: DanzzBot
 version: 14.0-NetworkSuite
 main: com.danzzreal.danzzbot.DanzzBot
 api-version: '1.21'
-softdepend: [LuckPerms, Citizens, PlaceholderAPI]
+prefix: DanzzBot
+authors: [DanzzReal]
+description: Plugin enterprise network tingkat lanjut untuk manajemen bot, PvP, dan monitoring server.
+
+softdepend: 
+  - Citizens
+  - LuckPerms
+  - PlaceholderAPI
 
 commands:
   danzzbot:
-    description: Perintah utama DanzzBot Enterprise
+    description: Perintah utama manajemen DanzzBot Enterprise Network.
     permission: danzzbot.admin
-    aliases: [db, danzz]
+    permission-message: §cMaaf, kamu tidak memiliki izin untuk menggunakan perintah ini!
+    usage: /<command> [menu|skin|create]
+    aliases: [dbot, danzzbot, bot]
     
