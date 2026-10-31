@@ -1,21 +1,36 @@
-name: DanzzBot
-version: 14.0-NetworkSuite
+name: DanzzBotEnterprise
+version: 46.0
 main: com.danzzreal.danzzbot.DanzzBot
-api-version: '1.21'
-prefix: DanzzBot
+api-version: 1.20
 authors: [DanzzReal]
-description: Plugin enterprise network tingkat lanjut untuk manajemen bot, PvP, dan monitoring server.
-
-softdepend: 
-  - Citizens
-  - LuckPerms
-  - PlaceholderAPI
+description: Premium Commercial Minecraft Bot Suite with Advanced AI, GUI, RPG & Economy.
+depend: [Citizens, Vault]
+softdepend: [PlaceholderAPI]
 
 commands:
   danzzbot:
-    description: Perintah utama manajemen DanzzBot Enterprise Network.
+    description: Master command utama DanzzBot Enterprise
     permission: danzzbot.admin
-    permission-message: §cMaaf, kamu tidak memiliki izin untuk menggunakan perintah ini!
-    usage: /<command> [menu|skin|create]
-    aliases: [dbot, danzzbot, bot]
+    permission-message: §cKamu tidak memiliki izin untuk menggunakan perintah ini!
+    aliases: [dbot, danzz]
+  botmenu:
+    description: Membuka GUI Control Panel Utama
+    aliases: [cpanel]
+  botsettings:
+    description: Membuka Sub-Menu Settings Engine AI & Fitur
+  botchat:
+    description: Mengatur Auto Chat Slang atau mengirim chat manual bot
+    aliases: [bchat]
+  botrpg:
+    description: Membuka menu Bot RPG & Skill Leveling
+  botlist:
+    description: Membuka Spawn Hub Bot (List)
+  botcreate:
+    description: Membuat bot baru dengan validasi kuota
+  botremove:
+    description: Membuka menu penghapusan bot
+  botremoveall:
+    description: Menghapus seluruh bot yang aktif di server
+  botcontract:
+    description: Membuka menu kontrak kerja bot (Vault/Item Economy)
     
