@@ -48,7 +48,7 @@ public class DanzzBotCommand implements CommandExecutor, TabCompleter, Listener 
         if (args[0].equalsIgnoreCase("skin")) {
             if (args.length < 3) {
                 sendHelpHeader(player);
-                player.sendMessage(ChatColor.YELLOW + "  &eGunakan: &f/danzzbot skin <id/nama> <url_skin>");
+                player.sendMessage(ChatColor.YELLOW + "  Gunakan: /danzzbot skin <id/nama> <url_skin>");
                 return true;
             }
             applySkinToNpc(player, args[1], args[2]);
@@ -58,7 +58,7 @@ public class DanzzBotCommand implements CommandExecutor, TabCompleter, Listener 
         if (args[0].equalsIgnoreCase("create")) {
             if (args.length < 2) {
                 sendHelpHeader(player);
-                player.sendMessage(ChatColor.YELLOW + "  &eGunakan: &f/danzzbot create <nama_bot> [url_skin]");
+                player.sendMessage(ChatColor.YELLOW + "  Gunakan: /danzzbot create <nama_bot> [url_skin]");
                 return true;
             }
             createBotWithSkin(player, args[1], args.length >= 3 ? args[2] : null);
@@ -74,9 +74,9 @@ public class DanzzBotCommand implements CommandExecutor, TabCompleter, Listener 
         player.sendMessage(ChatColor.DARK_PURPLE + "✦══════════════════════════════════════✦");
         player.sendMessage(ChatColor.LIGHT_PURPLE + "         " + ChatColor.BOLD + "DANZZBOT ENTERPRISE NETWORK");
         player.sendMessage(ChatColor.DARK_PURPLE + "✦══════════════════════════════════════✦");
-        player.sendMessage(ChatColor.WHITE + " » &b/danzzbot menu &7- Membuka GUI Utama");
-        player.sendMessage(ChatColor.WHITE + " » &b/danzzbot create &7- Membuat bot baru & skin");
-        player.sendMessage(ChatColor.WHITE + " » &b/danzzbot skin &7- Mengganti skin URL NPC");
+        player.sendMessage(ChatColor.WHITE + " » " + ChatColor.AQUA + "/danzzbot menu" + ChatColor.GRAY + " - Membuka GUI Utama");
+        player.sendMessage(ChatColor.WHITE + " » " + ChatColor.AQUA + "/danzzbot create" + ChatColor.GRAY + " - Membuat bot baru & skin");
+        player.sendMessage(ChatColor.WHITE + " » " + ChatColor.AQUA + "/danzzbot skin" + ChatColor.GRAY + " - Mengganti skin URL NPC");
         player.sendMessage(ChatColor.DARK_PURPLE + "✦══════════════════════════════════════✦");
         player.sendMessage("");
     }
@@ -97,8 +97,14 @@ public class DanzzBotCommand implements CommandExecutor, TabCompleter, Listener 
         }
         gui.setItem(11, tpsItem);
 
-        // 2. Total Bots & Skin Manager (Player Head)
-        int totalBots = CitizensAPI.getNPCRegistry() != null ? (int) CitizensAPI.getNPCRegistry().size() : 0;
+        // 2. Total Bots & Skin Manager (Player Head) - Aman dari error size() Citizens API
+        int totalBots = 0;
+        if (CitizensAPI.getNPCRegistry() != null) {
+            for (NPC npc : CitizensAPI.getNPCRegistry()) {
+                totalBots++;
+            }
+        }
+
         ItemStack botCountItem = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta skullMeta = (SkullMeta) botCountItem.getItemMeta();
         if (skullMeta != null) {
@@ -211,3 +217,4 @@ public class DanzzBotCommand implements CommandExecutor, TabCompleter, Listener 
         return null;
     }
 }
+            
