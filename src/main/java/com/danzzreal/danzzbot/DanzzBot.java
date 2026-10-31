@@ -809,14 +809,10 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
         enterpriseEngineTask = new BukkitRunnable() {
             @Override
             public void run() {
-                double currentTps = 20.0;
-try {
-    double[] tpsList = Bukkit.getServer().getTPS();
-    if (tpsList != null && tpsList.length > 0) {
-        currentTps = tpsList[0];
-    }
-} catch (Exception ignored) {}
-                boolean isLagging = currentTps < 18.0;
+                        double currentTps = 20.0;
+        try {
+            currentTps = 20.0;
+        } catch (Exception ignored) {}
 
                 boolean cpvpActive = getConfig().getBoolean("settings.attack-cpvp", true);
                 boolean miningActive = getConfig().getBoolean("settings.mining", true);
