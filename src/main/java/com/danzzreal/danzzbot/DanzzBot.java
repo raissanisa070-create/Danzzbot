@@ -810,6 +810,7 @@ public final class DanzzBot extends JavaPlugin implements CommandExecutor, Liste
             @Override
             public void run() {
                         double currentTps = 20.0;
+        boolean isLagging = false;
         try {
             currentTps = 20.0;
         } catch (Exception ignored) {}
