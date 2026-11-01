@@ -1,74 +1,20 @@
-# ==========================================
-# DanzzBot Enterprise Network GUI Configuration
-# ==========================================
+# ================================
+# DanzzBot Premium - menu setting
+# ================================
 
-main-menu:
-  title: "&d&lDanzzBot Enterprise Network"
-  size: 27
-  items:
-    bot-list:
-      slot: 10
-      material: PLAYER_HEAD
-      name: "&a&lDeploy Unit"
-      lore:
-        - "&7Buka halaman untuk memilih"
-        - "&7template dan summon bot!"
-    create-bot:
-      slot: 11
-      material: NETHER_STAR
-      name: "&b&lCreate New Template"
-      lore:
-        - "&7Membuat template bot baru"
-        - "&7menggunakan Anvil GUI."
-    settings:
-      slot: 12
-      material: COMPARATOR
-      name: "&e&lEngine Settings"
-      lore:
-        - "&7Atur AI, CPvP, Mining,"
-        - "&7Security & Proteksi Claim."
-    equipment-manager:
-      slot: 13
-      material: NETHERITE_CHESTPLATE
-      name: "&d&lEquipment & Backpack"
-      lore:
-        - "&7Atur armor, senjata, tas,"
-        - "&7gaji bot, & skin unit."
-    control-bot:
-      slot: 14
-      material: NETHERITE_SWORD
-      name: "&c&lPossess Unit"
-      lore:
-        - "&7Kendalikan gerakan bot"
-        - "&7secara langsung in-game."
-    teleport-bot:
-      slot: 15
-      material: ENDER_PEARL
-      name: "&6&lQuantum Teleport"
-      lore:
-        - "&7Teleport instan ke"
-        - "&7lokasi unit bot."
-    admin-monitor:
-      slot: 16
-      material: CLOCK
-      name: "&4&lNetwork Performance"
-      lore:
-        - "&7[ADMIN] Pantau TPS, CPU,"
-        - "&7& Audit log server."
-    reload-plugin:
-      slot: 18
-      material: LIME_CONCRETE
-      name: "&a&lReload Plugin"
-      lore:
-        - "&7Reload config & menu"
-        - "&7tanpa restart server!"
-    remove-all:
-      slot: 26
-      material: BARRIER
-      name: "&4&lPurge All Units"
-      lore:
-        - "&7Hapus seluruh bot"
-        - "&7yang sedang aktif."
-    background:
-      slot: [0,1,2,3,4,5,6,7,8,9,17,19,20,21,22,23,24,25]
+menu-title: "&0🔮 &5&lDanzzBot Enterprise &8» &dMaster Control"
+size: 45
+
+filler-item:
+  material: "BLACK_STAINED_GLASS_PANE"
+  name: " "
+
+items:
+  tps-monitor:
+    slot: 11
+    material: "NETHER_STAR"
+    name: "&b&l⚡ Ultimate Commercial Monitor"
+    lore:
+      - "&8Status Server: &a&lONLINE &8(&220.0 TPS&8)"
+      - "&8Edition: &fFull Folder BotList v46.0"
       
