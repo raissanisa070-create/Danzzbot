@@ -64,13 +64,13 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Citizens API Local Jar -->
+        <!-- Citizens API Local System Path -->
         <dependency>
             <groupId>net.citizensnpcs</groupId>
             <artifactId>citizens-api</artifactId>
             <version>2.0</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/libs/citizens.jar</systemPath> <!-- Sesuaikan nama file jar Citizens kamu di folder libs -->
+            <systemPath>${project.basedir}/libs/Citizens-2.0.43-b4250.jar</systemPath>
         </dependency>
     </dependencies>
 
