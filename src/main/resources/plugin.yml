@@ -1,36 +1,35 @@
-name: DanzzBotEnterprise
-version: 46.0
+name: DanzzBotPremium
+version: 47.0
 main: com.danzzreal.danzzbot.DanzzBot
 api-version: 1.20
 authors: [DanzzReal]
-description: Premium Commercial Minecraft Bot Suite with Advanced AI, GUI, RPG & Economy.
+description: Premium Commercial Minecraft Bot Suite with External BotList Folder & AI.
 depend: [Citizens, Vault]
 softdepend: [PlaceholderAPI]
 
 commands:
   danzzbot:
-    description: Master command utama DanzzBot Enterprise
+    description: Master command utama DanzzBot
     permission: danzzbot.admin
-    permission-message: §cKamu tidak memiliki izin untuk menggunakan perintah ini!
     aliases: [dbot, danzz]
   botmenu:
-    description: Membuka GUI Control Panel Utama
+    description: Membuka GUI Control Panel
     aliases: [cpanel]
   botsettings:
-    description: Membuka Sub-Menu Settings Engine AI & Fitur
+    description: Membuka Sub-Menu Settings
   botchat:
-    description: Mengatur Auto Chat Slang atau mengirim chat manual bot
+    description: Mengatur Auto/Manual Chat
     aliases: [bchat]
   botrpg:
-    description: Membuka menu Bot RPG & Skill Leveling
+    description: Membuka menu Bot RPG
   botlist:
-    description: Membuka Spawn Hub Bot (List)
+    description: Membuka Spawn Hub Bot
   botcreate:
-    description: Membuat bot baru dengan validasi kuota
+    description: Membuat bot baru
   botremove:
-    description: Membuka menu penghapusan bot
+    description: Menu hapus bot
   botremoveall:
-    description: Menghapus seluruh bot yang aktif di server
+    description: Hapus semua bot
   botcontract:
-    description: Membuka menu kontrak kerja bot (Vault/Item Economy)
+    description: Menu kontrak kerja
     
