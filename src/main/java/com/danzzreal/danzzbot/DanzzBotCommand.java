@@ -380,10 +380,15 @@ public class DanzzBotCommand implements CommandExecutor, TabCompleter, Listener 
         player.sendMessage(msg);
     }
 
-    private void removeAllBots(Player player) {
+     private void removeAllBots(Player player) {
         int count = 0;
         if (CitizensAPI.getNPCRegistry() != null) {
-            List<NPC> list = new ArrayList<>(CitizensAPI.getNPCRegistry());
+            // Perbaikan explicit type argument agar tidak error saat kompilasi Maven
+            List<NPC> list = new ArrayList<>();
+            for (NPC npc : CitizensAPI.getNPCRegistry()) {
+                list.add(npc);
+            }
+
             for (NPC npc : list) {
                 plugin.getBotFileManager().deleteBotFile(npc);
                 npc.destroy();
