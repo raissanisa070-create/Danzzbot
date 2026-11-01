@@ -2,8 +2,6 @@ package com.danzzreal.danzzbot;
 
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
@@ -29,7 +27,6 @@ public class BotFileManager {
         }
     }
 
-    // Menyimpan data bot ke dalam file terpisah di dalam folder botlist
     public void saveBotToFile(NPC npc, String skinUrl) {
         File botFile = new File(botListFolder, npc.getId() + "_" + npc.getName() + ".yml");
         FileConfiguration config = YamlConfiguration.loadConfiguration(botFile);
@@ -49,7 +46,6 @@ public class BotFileManager {
         }
     }
 
-    // Memuat kembali seluruh bot dari folder botlist saat server direstart
     public void loadBotsFromFolder() {
         if (!botListFolder.exists()) return;
 
@@ -62,11 +58,10 @@ public class BotFileManager {
             int id = config.getInt("bot.id");
             String name = config.getString("bot.name", "BotRestored");
 
-            // Cek apakah NPC sudah terdaftar di Citizens
             if (CitizensAPI.getNPCRegistry().getById(id) == null) {
                 NPC npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, name);
                 loadedCount++;
-                plugin.getLogger().info("[DanzzBot] Berhasil memuat ulang bot dari file: " + name + " (ID: " + id + ")");
+                plugin.getLogger().info("[DanzzBot] Berhasil memuat ulang bot dari folder botlist: " + name + " (ID: " + id + ")");
             }
         }
         if (loadedCount > 0) {
@@ -74,7 +69,6 @@ public class BotFileManager {
         }
     }
 
-    // Menghapus file bot saat bot dihapus dari game
     public void deleteBotFile(NPC npc) {
         File[] files = botListFolder.listFiles((dir, name) -> name.startsWith(npc.getId() + "_"));
         if (files != null) {
