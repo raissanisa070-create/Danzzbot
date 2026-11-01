@@ -1,14 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.danzzreal.danzzbot</groupId>
-    <artifactId>DanzzBot</artifactId>
-    <version>14.0-NetworkSuite</version>
+    <artifactId>DanzzBotEnterprise</artifactId>
+    <version>47.0</version>
     <packaging>jar</packaging>
 
-    <name>DanzzBot</name>
+    <name>DanzzBotEnterprise</name>
 
     <properties>
         <java.version>17</java.version>
@@ -16,61 +17,59 @@
     </properties>
 
     <repositories>
+        <!-- PaperMC Repository untuk Paper API & Destroystokyo Profile -->
         <repository>
-            <id>spigot-repo</id>
-            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+            <id>papermc</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
+        <!-- JitPack untuk Vault API -->
         <repository>
-            <id>sonatype</id>
-            <url>https://oss.sonatype.org/content/groups/public/</url>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
         </repository>
+        <!-- PlaceholderAPI Repository -->
         <repository>
-            <id>luckperms</id>
-            <url>https://repo.luckperms.co</url>
+            <id>placeholderapi</id>
+            <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
+        </repository>
+        <!-- Citizens API Repository (Full순서) -->
+        <repository>
+            <id>citizens-repo</id>
+            <url>https://maven.citizensnpcs.ca/</url>
         </repository>
     </repositories>
 
     <dependencies>
-        <!-- Spigot API Versi 1.21 untuk menyesuaikan server 1.21.11 -->
+        <!-- Paper API -->
         <dependency>
-            <groupId>org.spigotmc</groupId>
-            <artifactId>spigot-api</artifactId>
-            <version>1.21-R0.1-SNAPSHOT</version>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+            <version>1.20.4-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
 
-        <!-- JetBrains Annotations -->
+        <!-- Vault API -->
         <dependency>
-            <groupId>org.jetbrains</groupId>
-            <artifactId>annotations</artifactId>
-            <version>24.0.1</version>
+            <groupId>com.github.MilkBowl</groupId>
+            <artifactId>VaultAPI</artifactId>
+            <version>1.7</version>
             <scope>provided</scope>
         </dependency>
 
-        <!-- LuckPerms API -->
-        <dependency>
-            <groupId>net.luckperms</groupId>
-            <artifactId>api</artifactId>
-            <version>5.4</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- Citizens API dari folder libs/ -->
-        <dependency>
-            <groupId>net.citizensnpcs</groupId>
-            <artifactId>citizens-api</artifactId>
-            <version>2.0.43</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/Citizens-2.0.43-b4250.jar</systemPath>
-        </dependency>
-
-        <!-- PlaceholderAPI dari folder libs/ -->
+        <!-- PlaceholderAPI -->
         <dependency>
             <groupId>me.clip</groupId>
             <artifactId>placeholderapi</artifactId>
-            <version>2.12.3</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/PlaceholderAPI-2.12.3.jar</systemPath>
+            <version>2.11.5</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Citizens API -->
+        <dependency>
+            <groupId>net.citizensnpcs</groupId>
+            <artifactId>citizens-main</artifactId>
+            <version>2.7.3-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
@@ -83,8 +82,12 @@
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
-                    <release>${java.version}</release>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
             </plugin>
         </plugins>
     </build>
