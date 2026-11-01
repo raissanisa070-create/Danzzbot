@@ -1,19 +1,16 @@
 package com.danzzreal.danzzbot;
 
-import com.destroystokyo.paper.profile.PlayerProfile;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.Sound;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -102,14 +99,12 @@ public class DanzzBotCommand implements CommandExecutor, TabCompleter, Listener 
             for (NPC ignored : CitizensAPI.getNPCRegistry()) totalBots++;
         }
 
-        // Slot 10: RPG & Leveling
         ItemStack rpgItem = new ItemStack(Material.EXPERIENCE_BOTTLE);
         ItemMeta rpgMeta = rpgItem.getItemMeta();
-        rpgMeta.setDisplayName(ChatColor.GREEN + "⭐ &lBot RPG & Skill Leveling");
+        rpgMeta.setDisplayName(ChatColor.GREEN + "⭐ &lBot RPG & Leveling");
         rpgItem.setItemMeta(rpgMeta);
         gui.setItem(10, rpgItem);
 
-        // Slot 12: Spawn Hub
         ItemStack spawnHub = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta spawnMeta = (SkullMeta) spawnHub.getItemMeta();
         spawnMeta.setDisplayName(ChatColor.AQUA + "✨ &lSpawn Bot Hub (List)");
@@ -117,42 +112,36 @@ public class DanzzBotCommand implements CommandExecutor, TabCompleter, Listener 
         spawnHub.setItemMeta(spawnMeta);
         gui.setItem(12, spawnHub);
 
-        // Slot 14: Create Bot
         ItemStack createItem = new ItemStack(Material.EMERALD);
         ItemMeta createMeta = createItem.getItemMeta();
         createMeta.setDisplayName(ChatColor.GOLD + "＋ &lCreate Bot & Quota");
         createItem.setItemMeta(createMeta);
         gui.setItem(14, createItem);
 
-        // Slot 16: Task Scheduler
         ItemStack taskItem = new ItemStack(Material.CLOCK);
         ItemMeta taskMeta = taskItem.getItemMeta();
         taskMeta.setDisplayName(ChatColor.LIGHT_PURPLE + "⏰ &lTask Scheduler");
         taskItem.setItemMeta(taskMeta);
         gui.setItem(16, taskItem);
 
-        // Slot 22: Settings Menu
         ItemStack settingsItem = new ItemStack(Material.COMPARATOR);
         ItemMeta setMeta = settingsItem.getItemMeta();
         setMeta.setDisplayName(ChatColor.DARK_PURPLE + "⚙ &lFeature Settings (On/Off)");
         settingsItem.setItemMeta(setMeta);
         gui.setItem(22, settingsItem);
 
-        // Slot 28: Hot-Reload
         ItemStack reloadItem = new ItemStack(Material.BOOK);
         ItemMeta rMeta = reloadItem.getItemMeta();
         rMeta.setDisplayName(ChatColor.GREEN + "🔄 &lHot-Reload Config");
         reloadItem.setItemMeta(rMeta);
         gui.setItem(28, reloadItem);
 
-        // Slot 34: Remove Bot
         ItemStack removeMenu = new ItemStack(Material.LAVA_BUCKET);
         ItemMeta removeMeta = removeMenu.getItemMeta();
         removeMeta.setDisplayName(ChatColor.RED + "🗑 &lRemove Bot Menu");
         removeMenu.setItemMeta(removeMeta);
         gui.setItem(34, removeMenu);
 
-        // Slot 40: Close
         ItemStack close = new ItemStack(Material.BARRIER);
         ItemMeta cMeta = close.getItemMeta();
         cMeta.setDisplayName(ChatColor.RED + "✖ &lTutup Panel");
@@ -383,6 +372,10 @@ public class DanzzBotCommand implements CommandExecutor, TabCompleter, Listener 
         NPC npc = CitizensAPI.getNPCRegistry().createNPC(org.bukkit.entity.EntityType.PLAYER, name);
         npc.spawn(player.getLocation());
         botLevels.put(npc.getId(), 1);
+        
+        // Simpan otomatis ke folder botlist
+        plugin.getBotFileManager().saveBotToFile(npc, null);
+
         String msg = plugin.getLang("bot-saved", "&aBot {name} berhasil dibuat!").replace("{name}", name);
         player.sendMessage(msg);
     }
@@ -392,6 +385,7 @@ public class DanzzBotCommand implements CommandExecutor, TabCompleter, Listener 
         if (CitizensAPI.getNPCRegistry() != null) {
             List<NPC> list = new ArrayList<>(CitizensAPI.getNPCRegistry());
             for (NPC npc : list) {
+                plugin.getBotFileManager().deleteBotFile(npc);
                 npc.destroy();
                 count++;
             }
@@ -402,7 +396,8 @@ public class DanzzBotCommand implements CommandExecutor, TabCompleter, Listener 
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) return Arrays.asList("menu", "settings", "rpg", "list", "create", "reload", "remove", "removeall");
+        if (args.length == 1) return Arrays.asList("menu", "settings", "chat", "rpg", "list", "create", "reload", "remove", "removeall");
         return null;
     }
 }
+        
