@@ -38,7 +38,10 @@ public class DanzzBotPlaceholderExpansion extends PlaceholderExpansion {
         if (params.equalsIgnoreCase("total_bots")) {
             int count = 0;
             if (CitizensAPI.getNPCRegistry() != null) {
-                count = CitizensAPI.getNPCRegistry().size();
+                // Gunakan perulangan iterator untuk menghitung total NPC
+                for (net.citizensnpcs.api.npc.NPC ignored : CitizensAPI.getNPCRegistry()) {
+                    count++;
+                }
             }
             return String.valueOf(count);
         }
