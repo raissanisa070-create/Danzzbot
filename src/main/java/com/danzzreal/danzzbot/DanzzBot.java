@@ -341,21 +341,14 @@ public final class DanzzBot extends JavaPlugin implements Listener {
     @EventHandler
     public void onServerListPing(ServerListPingEvent event) {
         int botCount = 0;
-        List<PlayerProfile> fakeProfiles = new ArrayList<>();
-
         if (CitizensAPI.getNPCRegistry() != null) {
             for (NPC npc : CitizensAPI.getNPCRegistry()) {
                 if (npc.isSpawned()) {
                     botCount++;
-                    PlayerProfile profile = Bukkit.createProfile(UUID.randomUUID(), ChatColor.YELLOW + "[BOT] " + npc.getName());
-                    fakeProfiles.add(profile);
                 }
             }
         }
-
-        event.setNumPlayers(Bukkit.getOnlinePlayers().size() + botCount);
-        event.getPersonnel().clear();
-        event.getPersonnel().addAll(fakeProfiles);
+        event.setMaxPlayers(event.getMaxPlayers() + botCount);
     }
 
     private void startEnterpriseEngineTask() {
